@@ -1,0 +1,41 @@
+[project]
+name = "accident-severity-predictor"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+backend = [
+    "fastapi>=0.139.0",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.2",
+    "requests>=2.34.2",
+    "uvicorn>=0.51.0",
+]
+dev = [
+    "ipykernel>=7.3.0",
+    "jupyterlab>=4.6.1",
+    "mypy>=2.2.0",
+    "pre-commit>=4.6.0",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "python-dotenv>=1.2.2",
+    "ruff>=0.15.21",
+]
+frontend = [
+    "plotly>=6.9.0",
+    "streamlit>=1.59.1",
+]
+training = [
+    "joblib>=1.5.3",
+    "lightgbm>=4.6.0",
+    "matplotlib>=3.11.0",
+    "numpy>=2.5.1",
+    "pandas>=3.0.3",
+    "plotly>=6.9.0",
+    "scikit-learn>=1.9.0",
+    "seaborn>=0.13.2",
+    "xgboost>=3.3.0",
+]

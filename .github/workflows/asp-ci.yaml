@@ -1,0 +1,21 @@
+name: ASP CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+      - name: Verify CI pipeline
+        run: echo "ASP CI pipeline completed successfully (^v^)"
