@@ -153,6 +153,42 @@ Categories:
 
 ---
 
+## Basic pipeline
+
+**Download raw data for a specific year**:
+1. Set `YEAR` variable in the script `./common/data/download_raw_data.py`
+2. Run 
+    ```
+    python ./common/data/download_raw_data.py
+    ```
+
+**Create data splits**:
+1. Set `YEARS` list in the script `./common/data/make_dataset.py` to specify which years from raw data to include.
+2. Optionally set `EXCLUSIVE_TEST_YEAR` to specify if the test set should represent a specific year.
+3. Run 
+    ```
+    python ./common/make_dataset.py
+    ```
+
+**Run training**:
+1. Set `MODEL_PARAMETERS` dict in the script `./services/training/train.py` to specify model parameters.
+2. Run 
+    ``` 
+    python ./services/training/train.py --mode=train
+    ```
+
+**Run evaluation**:
+1. From the trained models look for the name of the model you want to evaluate.
+2. Run `
+    ```
+    python ./services/training/train.py --mode=eval --model_name=<MODEL NAME TO TEST>
+    ```
+
+
+
+
+---
+
 ## Good Practices
 
 * Keep pull requests small and focused.
