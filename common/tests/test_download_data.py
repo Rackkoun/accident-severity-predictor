@@ -9,6 +9,7 @@ import pytest
 
 from common.data.download_data import download_raw_data
 
+
 @pytest.fixture
 def api_response() -> dict:
     return {

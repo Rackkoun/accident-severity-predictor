@@ -2,10 +2,11 @@
 Tests for dataset_io
 """
 
-import pytest
+
 import pandas as pd
-from pathlib import Path
-from common.data.dataset_io import load_raw_csv, load_processed_csv
+import pytest
+
+from common.data.dataset_io import load_processed_csv, load_raw_csv
 
 
 @pytest.fixture

@@ -43,7 +43,7 @@ training = [
 
 # === Ruff
 [tool.ruff]
-line-length = 100
+line-length = 150
 target-version = "py312"
 
 [tool.ruff.lint]
@@ -55,6 +55,19 @@ select = [
     "W",   # pycodestyle warnings
     "UP",  # pyupgrade
 ]
+
+# solve: args name should be lowercase (X_train, X_test convention ML)
+# solve: variable in function should be lowercase (X_train, X_test convention ML)
+[tool.ruff.lint.per-file-ignores]
+# ML conventions: X_train, X_test, y_train, y_test are standard
+"common/data/*.py" = ["N803", "N806"]
+"services/training/src/*.py" = ["N803", "N806"]
+"services/training/tests/*.py" = ["N803", "N806"]
+"common/tests/*.py" = ["N803", "N806"]
+
+# Notebooks: trailing whitespace + ML naming
+"notebooks/**/*.ipynb" = ["N803", "N806", "W291"]
+
 
 [tool.ruff.format]
 quote-style = "double"
@@ -78,11 +91,33 @@ warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
 strict_equality = true
+# solve: error: Source file found twice under different module names: 
+# "asp_logging" and "common.utils.asp_logging"
+explicit_package_bases = true          # avoid conflict name with python packages
+exclude = [                             # exclure non-source dirs
+    "^\\.venv/",
+    "^artifacts/",
+    "^data/",
+    "^notebooks/",
+    "^htmlcov/",
+    "^\\.pytest_cache/",
+]
 
 [[tool.mypy.overrides]]
-module = ["sklearn.*", "joblib", "matplotlib.*"]
+module = [
+    "sklearn.*", "joblib", "matplotlib.*", "pandas.*",
+]
 ignore_missing_imports = true
 
+# relax strict typing tests
+[[tool.mypy.overrides]]
+module = [
+    "common.tests.*", 
+    "services.training.tests.*"
+]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = false
 
 # pytest + coverage
 [tool.pytest.ini_options]

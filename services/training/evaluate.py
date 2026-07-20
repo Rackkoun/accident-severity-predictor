@@ -2,14 +2,14 @@
 Evaluation entrypoint
 """
 
-from services.training.src.evaluate_model import run_evaluation
 from common.utils.paths import (
+    METRIC_DIR,
     MODEL_CONFIG,
     MODEL_DIR,
-    METRIC_DIR,
-    REPORT_DIR,
     PROCESSED_DATA_DIR,
+    REPORT_DIR,
 )
+from services.training.src.evaluate_model import run_evaluation
 
 if __name__ == "__main__":
     run_evaluation(

@@ -2,16 +2,16 @@
 Tests for clean_data
 """
 
-import pytest
 import pandas as pd
-import numpy as np
+import pytest
+
 from common.data.clean_data import (
-    correct_id_anomaly,
     clean_object_columns,
-    process_users,
-    process_vehicles,
+    correct_id_anomaly,
     process_characteristics,
     process_places,
+    process_users,
+    process_vehicles,
 )
 
 

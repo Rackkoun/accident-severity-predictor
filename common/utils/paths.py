@@ -3,6 +3,7 @@ centralized config for project dir structure and API
 """
 
 from pathlib import Path
+from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -30,13 +31,13 @@ DATA_SCRIPTS_DIR = COMMON_DIR / "data"
 UTILS_DIR = COMMON_DIR / "utils"
 
 # download dataset api url configuration
-API_CONFIG = {
+API_CONFIG: dict[str, str]  = {
     "dataset_url": "https://www.data.gouv.fr/api/1/datasets/",
     "dataset_slug": "bases-de-donnees-annuelles-des-accidents-corporels-de-la-circulation-routiere-annees-de-2005-a-2024/",
 }
 
 # preprocessing config
-DATA_PROCESSING_CONFIG = {
+DATA_PROCESSING_CONFIG: dict[str, Any] = {
     "years": [2021, 2022, 2023, 2024],
     "exclusive_test_year": 2024,
     "test_size": 0.3,
@@ -45,7 +46,7 @@ DATA_PROCESSING_CONFIG = {
 }
 
 # model config
-MODEL_CONFIG = {
+MODEL_CONFIG: dict[str, Any] = {
     "model_name": "model",
     "model_parameters": {
         "random_state": 42,

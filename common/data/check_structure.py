@@ -2,9 +2,10 @@
 Functions for checking and creating expected dirs/files
 """
 
+from collections.abc import Sequence
 from pathlib import Path
-from common.utils.logging import get_logger
-from common.utils.paths import REQUIRED_DIRS
+
+from common.utils.asp_logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -22,14 +23,14 @@ def create_dir(dir_path: str | Path) -> bool:
     dir_path = Path(dir_path)
     if dir_path.exists():
         return False
-    
+
     dir_path.mkdir(parents=True, exist_ok=True)
     logger.info(f"Created directory: {dir_path}")
 
     return True
 
 
-def ensure_directories(dirs: list[str | Path]) -> int:
+def ensure_directories(dirs: Sequence[str | Path]) -> int:
     """create missing dir and return the number of created."""
     created = 0
     for d in dirs:

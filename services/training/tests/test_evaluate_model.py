@@ -5,38 +5,82 @@ Tests for evaluate_model
 from pathlib import Path
 
 import joblib
-import numpy as np
 import pandas as pd
 import pytest
 from sklearn.ensemble import RandomForestClassifier
 
-from services.training.src.evaluate_model import run_evaluation
+from services.training.src.evaluate_model import _latest_model_path, run_evaluation
 
 
 @pytest.fixture
 def eval_setup(tmp_path: Path) -> tuple[Path, Path, Path, Path, str]:
-    # Model
     model_dir = tmp_path / "models"
     model_dir.mkdir()
-    X = [[1, 2], [3, 4], [5, 6], [7, 8]]
+
+    # create model
+    x = [[1, 2], [3, 4], [5, 6], [7, 8]]
     y = [0, 1, 0, 1]
     model = RandomForestClassifier(n_estimators=10, random_state=42)
-    model.fit(X, y)
+    model.fit(x, y)
     joblib.dump(model, model_dir / "test_model.joblib")
 
-    # Test data
+    # test data
     proc = tmp_path / "processed"
     proc.mkdir()
-    pd.DataFrame({"f1": [1.0, 3.0, 5.0], "f2": [2.0, 4.0, 6.0]}).to_csv(proc / "X_test.csv", index=False)
+    pd.DataFrame({"f1": [1.0, 3.0, 5.0], "f2": [2.0, 4.0, 6.0]}).to_csv(
+        proc / "X_test.csv", index=False
+    )
     pd.Series([0, 1, 0]).to_csv(proc / "y_test.csv", index=False)
 
-    # Output dirs
+    # output dirs
     metrics_dir = tmp_path / "metrics"
     reports_dir = tmp_path / "reports"
     metrics_dir.mkdir()
     reports_dir.mkdir()
 
     return proc, model_dir, metrics_dir, reports_dir, "test_model"
+
+
+@pytest.fixture
+def versioned_models(tmp_path: Path) -> Path:
+    """create multiple versioned models."""
+    model_dir = tmp_path / "models"
+    model_dir.mkdir()
+
+    x = [[1, 2], [3, 4]]
+    y = [0, 1]
+
+    for i in range(3):
+        model = RandomForestClassifier(n_estimators=5, random_state=i)
+        model.fit(x, y)
+        joblib.dump(model, model_dir / f"model_20260720{i:02d}0000.joblib")
+
+    return model_dir
+
+
+def test_latest_model_path_exact_match(versioned_models: Path) -> None:
+    """if exact match exists, return it."""
+    # Create exact match
+    x = [[1, 2], [3, 4]]
+    y = [0, 1]
+    model = RandomForestClassifier(n_estimators=5, random_state=99)
+    model.fit(x, y)
+    joblib.dump(model, versioned_models / "model.joblib")
+
+    path = _latest_model_path(versioned_models, "model")
+    assert path.name == "model.joblib"
+
+
+def test_latest_model_path_versioned(versioned_models: Path) -> None:
+    """return most recent versioned model."""
+    path = _latest_model_path(versioned_models, "model")
+    assert "model_" in path.name
+    assert path.name.endswith(".joblib")
+
+
+def test_latest_model_path_not_found(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        _latest_model_path(tmp_path, "nonexistent")
 
 
 def test_eval_returns_metrics(eval_setup: tuple) -> None:
@@ -49,13 +93,13 @@ def test_eval_returns_metrics(eval_setup: tuple) -> None:
 def test_eval_saves_metrics_json(eval_setup: tuple) -> None:
     proc, m_dir, met_dir, rep_dir, name = eval_setup
     run_evaluation(name, proc, m_dir, met_dir, rep_dir)
-    assert (met_dir / f"{name}_metrics.json").exists()
+    assert any(met_dir.glob("*_metrics.json"))
 
 
 def test_eval_saves_confusion_matrix(eval_setup: tuple) -> None:
     proc, m_dir, met_dir, rep_dir, name = eval_setup
     run_evaluation(name, proc, m_dir, met_dir, rep_dir)
-    assert (rep_dir / f"{name}_confusion_matrix.png").exists()
+    assert any(rep_dir.glob("*_confusion_matrix.png"))
 
 
 def test_eval_metrics_are_floats_0_to_1(eval_setup: tuple) -> None:

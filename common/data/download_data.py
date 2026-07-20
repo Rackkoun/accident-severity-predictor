@@ -3,10 +3,12 @@ Dataset downloader
 """
 
 from pathlib import Path
+from typing import Any
+
 import requests
 
 from common.data.check_structure import file_exists
-from common.utils.logging import get_logger
+from common.utils.asp_logging import get_logger
 from common.utils.paths import API_CONFIG, DATA_PROCESSING_CONFIG, RAW_DATA_DIR
 
 logger = get_logger(__name__)
@@ -23,12 +25,17 @@ def download_raw_data(
 
     dataset_url = dataset_api + dataset_slug
     output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
+    logger.info(f"Fetching dataset metadata from {dataset_url}...")
     response = requests.get(dataset_url)
     if response.status_code != 200:
         raise Exception(f"Download dataset failed with status code ({response.status_code})")
-    
-    resources = response.json().get("resources", [])
+
+    logger.info("Dataset metadata fetched successfully.")
+
+    dataset = response.json()
+    resources: list[dict[str, Any]] = dataset["resources"]
     output_paths = []
 
     for resource in resources:
@@ -52,14 +59,14 @@ def download_raw_data(
                 for chunk in req.iter_content(chunk_size=8192):
                     if chunk:
                         f.write(chunk)
-        
+
         output_paths.append(output_path)
-    
+
     return output_paths
 
 
 if __name__ == "__main__":
-    
+
     for year in DATA_PROCESSING_CONFIG["years"]:
         download_raw_data(year=year)
-    logger.info(f"Download completed!")
+    logger.info("Download completed!")

@@ -2,14 +2,9 @@
 Tests for check_structure
 """
 
-import pytest
 from pathlib import Path
-from common.data.check_structure import (
-    create_dir,
-    dir_exists,
-    ensure_directories,
-    file_exists
-)
+
+from common.data.check_structure import create_dir, dir_exists, ensure_directories, file_exists
 
 
 def test_dir_exists_true(tmp_path: Path) -> None:

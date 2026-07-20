@@ -5,13 +5,14 @@ Custom log
 import logging
 import sys
 
+
 def get_logger(name: str) -> logging.Logger:
 
     logger = logging.getLogger(name)
-    # console handler and level 
+    # console handler and level
     if logger.handlers:
         return logger
-    
+
     logger.setLevel(logging.INFO)
     # formatter
     formatter = logging.Formatter(

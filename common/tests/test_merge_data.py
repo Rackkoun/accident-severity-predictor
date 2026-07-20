@@ -2,17 +2,18 @@
 Tests for merge_data
 """
 
-import pytest
-import pandas as pd
+
 import numpy as np
-from pathlib import Path
+import pandas as pd
+import pytest
+
 from common.data.merge_data import (
     collect_raw_data_paths,
     merge_datasets,
-    process_merged_dataset,
-    split_data,
     process_features,
+    process_merged_dataset,
     save_datasets,
+    split_data,
 )
 
 
@@ -61,7 +62,7 @@ def test_collect_raw_data_paths(tmp_path):
     for year in [2021, 2022]:
         for table in ["caracteristiques", "usagers", "vehicules", "lieux"]:
             (raw / f"{table}-{year}.csv").touch()
-    
+
     paths = collect_raw_data_paths(raw)
     assert "car" in paths
     assert paths["car"][2021] is not None
@@ -93,7 +94,7 @@ def test_process_merged_replaces_sentinels():
         "grav": [0, 1], "catv": [0, 5], "secu1": [1, -1], "motor": [0, -1],
         "circ": [1, 1], "surf": [1, 1], "situ": [1, 1],
         "vma": [1, 1], "atm": [1, 1], "col": [1, 1],
-        # added col below to solve key error: 
+        # added col below to solve key error:
         # KeyError: "['senc', 'larrout', 'actp', 'manv',...
         "trajet": [1, 1], "obsm": [1, 1],
         "senc": [1, 1], "larrout": [1.0, 1.0], "actp": [1, 1],
@@ -140,7 +141,7 @@ def test_process_features_imputation():
         "catu": [1, np.nan],
         "num_feat": [np.nan, 2.0],
     })
-    
+
     X_tr, X_te = process_features(X_train, X_test, normalize=False)
     assert not X_tr.isnull().any().any()
     assert not X_te.isnull().any().any()
@@ -149,7 +150,7 @@ def test_process_features_imputation():
 def test_process_features_normalization():
     X_train = pd.DataFrame({
         "place": [1, 2, 1],           # CAT_COLS
-        "catu": [1, 2, 1],            
+        "catu": [1, 2, 1],
         "num_feat": [1.0, 2.0, 3.0],  # num
     })
     X_test = pd.DataFrame({
@@ -157,7 +158,7 @@ def test_process_features_normalization():
         "catu": [1, 2],
         "num_feat": [0.0, 4.0],
     })
-    
+
     X_tr, _ = process_features(X_train, X_test, normalize=True)
     assert abs(X_tr["num_feat"].mean()) < 0.01
 
@@ -168,11 +169,11 @@ def test_save_datasets(tmp_path):
     X_test = pd.DataFrame({"a": [3]})
     y_train = pd.Series([0, 1])
     y_test = pd.Series([0])
-    
+
     out = tmp_path / "processed"
     out.mkdir(parents=True, exist_ok=True)
     save_datasets(X_train, X_test, y_train, y_test, out)
-    
+
     assert (out / "X_train.csv").exists()
     assert (out / "X_test.csv").exists()
     assert (out / "y_train.csv").exists()

@@ -1,4 +1,5 @@
 from pathlib import Path
+
 import pytest
 
 from common.utils.paths import (
@@ -6,10 +7,10 @@ from common.utils.paths import (
     ARTIFACTS_DIR,
     DATA_DIR,
     DATA_PROCESSING_CONFIG,
-    MODEL_DIR,
     MODEL_CONFIG,
-    PROJECT_ROOT,
+    MODEL_DIR,
     PROCESSED_DATA_DIR,
+    PROJECT_ROOT,
     RAW_DATA_DIR,
     REQUIRED_DIRS,
 )

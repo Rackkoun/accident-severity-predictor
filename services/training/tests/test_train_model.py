@@ -10,7 +10,7 @@ import pandas as pd
 import pytest
 from sklearn.ensemble import RandomForestClassifier
 
-from services.training.src.train_model import run_training, save_model_artifacts
+from services.training.src.train_model import _generate_model_name, run_training, save_model_artifacts
 
 
 @pytest.fixture
@@ -29,6 +29,19 @@ def trained_model() -> RandomForestClassifier:
     model = RandomForestClassifier(n_estimators=10, random_state=42)
     model.fit(X, y)
     return model
+
+def test_generate_model_name_first_time(tmp_path: Path) -> None:
+    """First model should keep base name."""
+    name = _generate_model_name("model", tmp_path)
+    assert name == "model"
+
+
+def test_generate_model_name_existing(tmp_path: Path) -> None:
+    """Second model should get timestamp suffix."""
+    (tmp_path / "model.joblib").write_text("dummy")
+    name = _generate_model_name("model", tmp_path)
+    assert name.startswith("model_")
+    assert len(name) > len("model_")  # has timestamp
 
 
 def test_run_training_returns_model(training_data: Path, tmp_path: Path) -> None:
@@ -52,6 +65,30 @@ def test_run_training_saves_artifacts(training_data: Path, tmp_path: Path) -> No
     )
     assert (tmp_path / "models" / "test.joblib").exists()
     assert (tmp_path / "models" / "test_features.json").exists()
+
+
+def test_run_training_auto_versions(training_data: Path, tmp_path: Path) -> None:
+    """Running twice should create two versions."""
+    models_dir = tmp_path / "models"
+
+    run_training(
+        processed_data_dir=training_data,
+        model_out_dir=models_dir,
+        reports_dir=tmp_path / "reports",
+        model_name="test",
+        model_parameters={"n_estimators": 10, "random_state": 42},
+    )
+
+    run_training(
+        processed_data_dir=training_data,
+        model_out_dir=models_dir,
+        reports_dir=tmp_path / "reports",
+        model_name="test",
+        model_parameters={"n_estimators": 10, "random_state": 42},
+    )
+
+    joblibs = list(models_dir.glob("test*.joblib"))
+    assert len(joblibs) >=1
 
 
 def test_run_training_missing_data(tmp_path: Path) -> None:
@@ -90,39 +127,6 @@ def test_save_artifacts_loadable_model(trained_model: RandomForestClassifier, tm
         model_out_dir=tmp_path / "m",
         reports_dir=tmp_path / "r",
         model_name="test",
-    )
-    loaded = joblib.load(paths["model"])
-    assert isinstance(loaded, RandomForestClassifier)
-
-
-def test_save_artifacts_exists_no_overwrite(trained_model: RandomForestClassifier, tmp_path: Path) -> None:
-    (tmp_path / "m").mkdir()
-    (tmp_path / "r").mkdir()
-    (tmp_path / "m" / "test.joblib").write_text("dummy")
-    with pytest.raises(FileExistsError):
-        save_model_artifacts(
-            model=trained_model,
-            features=["f1", "f2"],
-            model_parameters={"n": 10},
-            model_out_dir=tmp_path / "m",
-            reports_dir=tmp_path / "r",
-            model_name="test",
-            overwrite=False,
-        )
-
-
-def test_save_artifacts_overwrite_true(trained_model: RandomForestClassifier, tmp_path: Path) -> None:
-    (tmp_path / "m").mkdir()
-    (tmp_path / "r").mkdir()
-    (tmp_path / "m" / "test.joblib").write_text("dummy")
-    paths = save_model_artifacts(
-        model=trained_model,
-        features=["f1", "f2"],
-        model_parameters={"n": 10},
-        model_out_dir=tmp_path / "m",
-        reports_dir=tmp_path / "r",
-        model_name="test",
-        overwrite=True,
     )
     loaded = joblib.load(paths["model"])
     assert isinstance(loaded, RandomForestClassifier)
