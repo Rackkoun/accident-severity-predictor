@@ -20,15 +20,18 @@ jobs:
         uses: astral-sh/setup-uv@v3
         with:
           version: "latest"
+          enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --group dev
+        run: uv sync --group dev \
+                     --group backend \
+                     --group training
 
       - name: Run Ruff check
-        run: uv run ruff check common/ services/
+        run: uv run ruff check check .
 
       - name: Run Ruff format check
-        run: uv run ruff format --check common/ services/
+        run: uv run ruff format --check .
 
       - name: Run MyPy
         run: uv run mypy common/ services/

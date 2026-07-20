@@ -45,6 +45,14 @@ training = [
 [tool.ruff]
 line-length = 150
 target-version = "py312"
+exclude = [
+    ".venv",
+    "artifacts",
+    "data",
+    "htmlcov",
+    ".pytest_cache",
+    "notebooks",
+]
 
 [tool.ruff.lint]
 select = [
@@ -54,6 +62,7 @@ select = [
     "N",   # pep8-naming
     "W",   # pycodestyle warnings
     "UP",  # pyupgrade
+    "B",   # Bug
 ]
 
 # solve: args name should be lowercase (X_train, X_test convention ML)
@@ -74,6 +83,12 @@ quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
+
+[tool.ruff.lint.isort]
+known-first-party = [
+    "common",
+    "services",
+]
 
 
 # === mypy
@@ -135,6 +150,7 @@ addopts = [
     "--cov-report=html:htmlcov",
     "--cov-report=xml:coverage.xml",
     "--cov-fail-under=80",
+    "-ra",
 ]
 
 [tool.coverage.run]
@@ -148,7 +164,6 @@ omit = [
     "__init__.py",
     "*/train.py",
     "*/evaluate.py",
-    "*/download_data.py"
 ]
 
 [tool.coverage.report]
