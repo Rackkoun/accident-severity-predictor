@@ -2,67 +2,64 @@
 Dataset downloader
 """
 
-import requests
 from pathlib import Path
+import requests
 
-from check_structure import check_existing_file
+from common.data.check_structure import file_exists
+from common.utils.logging import get_logger
+from common.utils.paths import API_CONFIG, DATA_PROCESSING_CONFIG, RAW_DATA_DIR
+
+logger = get_logger(__name__)
 
 
 def download_raw_data(
         year: int = 2021,
-        datasets_api: str = "https://www.data.gouv.fr/api/1/datasets/",
-        dataset_slug: str =  "bases-de-donnees-annuelles-des-accidents-corporels-de-la-circulation-routiere-annees-de-2005-a-2024/",
-        raw_data_dir: str = "./data/raw"
-        ) -> None:
-    """Download the 4 raw datasets for a given year."""
-    # API endpoint and output directory
-    dataset_url = datasets_api + dataset_slug
-    output_dir = Path(raw_data_dir)
+        dataset_api: str = API_CONFIG["dataset_url"],
+        dataset_slug: str = API_CONFIG["dataset_slug"],
+        output_dir: str | Path = RAW_DATA_DIR,
+        overwrite: bool = False
+) -> list[Path]:
+    """download the raw csv files for a given years"""
 
-    # Get dataset metadata
+    dataset_url = dataset_api + dataset_slug
+    output_dir = Path(output_dir)
+
     response = requests.get(dataset_url)
-
-    # Stop if API request was not successful
     if response.status_code != 200:
-        raise Exception(f"Dataset API request failed ({response.status_code})")
+        raise Exception(f"Download dataset failed with status code ({response.status_code})")
     
-    # Extract the list of resource metadata
-    dataset = response.json()
-    resources = dataset["resources"]
+    resources = response.json().get("resources", [])
+    output_paths = []
 
-    # Search for the CSV files corresponding to the requested year
     for resource in resources:
         title = resource.get("title", "")
         url = resource.get("url", "")
 
-        # Skip files that are non csv / from another year / are BAAC archives
         if not title.endswith(".csv") or str(year) not in title or "baac" in title:
             continue
 
         output_path = output_dir / title
 
-        # Skip files that already exist after user confirmation
-        if not check_existing_file(output_path):
+        if file_exists(output_path) and not overwrite:
+            logger.info(f"File already exists, skipping: {output_path}")
+            output_paths.append(output_path)
             continue
 
-        # Download file in chunks
-        print(f"Downloading {title}...")
-        with requests.get(url, stream=True) as r:
-            r.raise_for_status()
+        logger.info(f"Downloading {title}...")
+        with requests.get(url, stream=True) as req:
+            req.raise_for_status()
             with open(output_path, "wb") as f:
-                for chunk in r.iter_content(chunk_size=8192):
+                for chunk in req.iter_content(chunk_size=8192):
                     if chunk:
                         f.write(chunk)
+        
+        output_paths.append(output_path)
+    
+    return output_paths
 
 
 if __name__ == "__main__":
-
-    # Config
-    YEAR = 2021
-    RAW_DATA_DIR = "../../data/raw"
-
-    # Run download
-    download_raw_data(
-        year=YEAR,
-        raw_data_dir=RAW_DATA_DIR
-    )
+    
+    for year in DATA_PROCESSING_CONFIG["years"]:
+        download_raw_data(year=year)
+    logger.info(f"Download completed!")
