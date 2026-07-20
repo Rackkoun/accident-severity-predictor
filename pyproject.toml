@@ -1,7 +1,7 @@
 [project]
 name = "accident-severity-predictor"
 version = "0.1.0"
-description = "Add your description here"
+description = "ML pipeline for predicting accident severity using French road accident data (BAAC)"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = []
@@ -39,3 +39,92 @@ training = [
     "seaborn>=0.13.2",
     "xgboost>=3.3.0",
 ]
+
+
+# === Ruff
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "W",   # pycodestyle warnings
+    "UP",  # pyupgrade
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+
+# === mypy
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = false
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = ["sklearn.*", "joblib", "matplotlib.*"]
+ignore_missing_imports = true
+
+
+# pytest + coverage
+[tool.pytest.ini_options]
+testpaths = [
+    "common/tests", 
+    "services/training/tests",
+]
+pythonpath = ["."]
+addopts = [
+    "-v",
+    "--tb=short",
+    "--cov=common",
+    "--cov=services",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+    "--cov-report=xml:coverage.xml",
+    "--cov-fail-under=80",
+]
+
+[tool.coverage.run]
+source = [
+    "common",
+    "services"
+]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "__init__.py",
+    "*/train.py",
+    "*/evaluate.py",
+    "*/download_data.py"
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"

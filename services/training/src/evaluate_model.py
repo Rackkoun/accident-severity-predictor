@@ -6,6 +6,7 @@ import json
 from pathlib import Path
  
 import joblib
+import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.metrics import (
@@ -18,6 +19,8 @@ from sklearn.metrics import (
 
 from common.utils.logging import get_logger
 from common.data.dataset_io import load_processed_csv
+
+matplotlib.use("Agg")
 
 logger = get_logger(__name__)
  

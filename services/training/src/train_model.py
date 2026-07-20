@@ -68,7 +68,10 @@ def save_model_artifacts(
     
     model_out_dir = Path(model_out_dir)
     reports_dir = Path(reports_dir)
- 
+    
+    model_out_dir.mkdir(parents=True, exist_ok=True)
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    
     model_path = model_out_dir / f"{model_name}.joblib"
     features_path = model_out_dir / f"{model_name}_features.json"
     params_path = model_out_dir / f"{model_name}_parameters.json"
