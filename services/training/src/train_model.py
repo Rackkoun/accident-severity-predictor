@@ -1,85 +1,100 @@
 """
-Model training script
+Model training
 """
-
-from pathlib import Path
-import joblib
 import json
-
-import pandas as pd 
+from pathlib import Path
+ 
+import joblib
 import matplotlib.pyplot as plt
+import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 
+from common.utils.logging import get_logger
+from common.data.dataset_io import load_processed_csv
+
+from datetime import datetime
+
+logger = get_logger(__name__)
 
 def run_training(
-        processed_data_dir: str | Path = "./data/processed",
-        model_out_dir: str | Path = "./artifacts/models",
-        model_parameters: dict | None = None,
-        reports_dir: str | Path = "./artifacts/reports"
-        ) -> None:
-    """Run the training and save model to output dir"""
+        processed_data_dir: str | Path,
+        model_out_dir: str | Path,
+        reports_dir: str | Path,
+        model_name: str,
+        model_parameters: dict,
+        top_n_features: int = 20,
+        overwrite: bool = False,
+    ) -> RandomForestClassifier:
+    """train the RandomForest (params from the notebook benchmark) and save artifacts. Return the model."""
 
-    # Get training data
     processed_data_dir = Path(processed_data_dir)
-    X_train = pd.read_csv(processed_data_dir / "X_train.csv")
-    y_train = pd.read_csv(processed_data_dir / "y_train.csv").squeeze()
 
-    # Define model
-    model =  RandomForestClassifier(
-                **model_parameters,
-                n_jobs=-1,
-            )
+    logger.info("Loading processed training dataset...")
+    X_train = load_processed_csv(processed_data_dir / "X_train.csv")
+    y_train = load_processed_csv(processed_data_dir / "y_train.csv").squeeze()
+ 
+    model = RandomForestClassifier(**model_parameters)
 
-    # Train model
+    logger.info("Training RandomForest model...")
     model.fit(X_train, y_train)
-
-    # Save model
+ 
+    logger.info("Saving model artifacts...")
     save_model_artifacts(
-        model=model, 
-        features=list(X_train.columns), 
+        model=model,
+        features=list(X_train.columns),
         model_parameters=model_parameters,
         reports_dir=reports_dir,
-        model_out_dir=model_out_dir)
+        model_out_dir=model_out_dir,
+        model_name=model_name,
+        top_n_features=top_n_features,
+        overwrite=overwrite,
+    )
 
-
+    logger.info("Training completed.")
+    return model
+ 
+ 
 def save_model_artifacts(
         model: RandomForestClassifier,
         features: list[str],
-        model_parameters: dict | None = None,
-        reports_dir: str | Path = "./artifacts/reports",
-        model_out_dir: str | Path = "./artifacts/models",
-        ) -> None:
-    """Save model, features and feature importance."""
-
-    # Specify model name
-    model_name = "model"
+        model_parameters: dict,
+        model_out_dir: str | Path,
+        reports_dir: str | Path,
+        model_name: str,
+        top_n_features: int = 20,
+        overwrite: bool = False,
+    ) -> dict[str, Path]:
+    """save model, features list, parameters and a feature-importance plot. Return the output paths."""
+    
     model_out_dir = Path(model_out_dir)
-    model_path = model_out_dir / f"{model_name}.joblib"  
-    
-    while model_path.exists():
-        print(f"Model with name '{model_name}' already exists under '{model_out_dir}'.")
-        model_name = input("Choose another name: ")
-        model_path = model_out_dir / f"{model_name}.joblib" 
-    
-    # Save model
-    joblib.dump(model, model_path)
-
-    # Save features
+    reports_dir = Path(reports_dir)
+ 
+    model_path = model_out_dir / f"{model_name}.joblib"
     features_path = model_out_dir / f"{model_name}_features.json"
+    params_path = model_out_dir / f"{model_name}_parameters.json"
+    importance_path = reports_dir / f"{model_name}_feature_importance.png"
+ 
+    # au lieu de throw une erreur. le premier model est saved avec model.joblib
+    # les autres model seraient saved avec suivant la logique model_timestamp.joblib e.g. model_202607201802.joblib
+    if model_path.exists() and not overwrite:
+        raise FileExistsError(
+            f"Model '{model_name}' already exists at '{model_path}'. Use overwrite=True to replace it."
+        )
+    
+    logger.info(f"Saving model: {model_path}")
+    joblib.dump(model, model_path)
+ 
+    logger.info(f"Saving features: {features_path}")
     with open(features_path, "w") as f:
         json.dump(features, f, indent=4)
-
-    # Save model paramaters
-    params_path = model_out_dir / f"{model_name}_parameters.json"
+ 
     with open(params_path, "w") as f:
         json.dump(model_parameters, f, indent=4)
-
-    # Get feature importance
-    top_n = 20
+ 
     feature_importance = (
         pd.Series(model.feature_importances_, index=features)
         .sort_values(ascending=False)
-        .head(top_n)
+        .head(top_n_features)
         .sort_values(ascending=True)
     )
     fig, ax = plt.subplots(figsize=(8, max(4, len(feature_importance) * 0.3)))
@@ -88,14 +103,13 @@ def save_model_artifacts(
     ax.set_xlabel("Importance")
     plt.tight_layout()
 
-    # Save feature importance fig
-    reports_dir = Path(reports_dir)
-    importance_path = reports_dir / f"{model_name}_feature_importance.png"
+    logger.info(f"Saving feature importance plot: {importance_path}")
     plt.savefig(importance_path, dpi=300)
     plt.close(fig)
-
-    print("Model trained successfully.")
-    print(f"Saved model at '{model_path}'")
-    print(f"Saved features at '{features_path}'")
-    print(f"Saved parameters at '{params_path}'")
-    print(f"Saved feature importance fig at '{importance_path}'")
+ 
+    return {
+        "model": model_path,
+        "features": features_path,
+        "parameters": params_path,
+        "feature_importance": importance_path,
+    }

@@ -21,7 +21,7 @@ from common.data.merge_data import (
     save_datasets
 )
 
-from common.data.dataset_io import load_csv
+from common.data.dataset_io import load_raw_csv
 
 from common.utils.logging import get_logger
 from common.utils.paths import DATA_PROCESSING_CONFIG, PROCESSED_DATA_DIR, RAW_DATA_DIR
@@ -48,7 +48,7 @@ def process_yearly_data(raw_path_collection: dict, year: int) -> pd.DataFrame:
         raise FileNotFoundError(
             f"Missing usagers dataset for {year}"
         )
-    df_users = process_users(load_csv(path))
+    df_users = process_users(load_raw_csv(path))
 
     logger.info(f"Loading vehicles ({year})...")
     path = raw_path_collection["veh"][year]
@@ -56,7 +56,7 @@ def process_yearly_data(raw_path_collection: dict, year: int) -> pd.DataFrame:
         raise FileNotFoundError(
             f"Missing vehicles dataset for {year}"
         )
-    df_veh = process_vehicles(load_csv(path))
+    df_veh = process_vehicles(load_raw_csv(path))
 
     logger.info(f"Loading characteristics ({year})...")
     path = raw_path_collection["car"][year]
@@ -64,7 +64,7 @@ def process_yearly_data(raw_path_collection: dict, year: int) -> pd.DataFrame:
         raise FileNotFoundError(
             f"Missing caracteristiques dataset for {year}"
         )
-    df_caract = process_characteristics(load_csv(path))
+    df_caract = process_characteristics(load_raw_csv(path))
 
     logger.info(f"Loading places ({year})...")
     path = raw_path_collection["lie"][year]
@@ -72,7 +72,7 @@ def process_yearly_data(raw_path_collection: dict, year: int) -> pd.DataFrame:
         raise FileNotFoundError(
             f"Missing lieux dataset for {year}"
         )
-    df_places = process_places(load_csv(path))
+    df_places = process_places(load_raw_csv(path))
     
     logger.info(f"Merging datasets ({year})...")
     df = merge_datasets(df_users, df_veh, df_places, df_caract)
