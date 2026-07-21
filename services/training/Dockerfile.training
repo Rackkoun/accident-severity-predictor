@@ -26,5 +26,9 @@ RUN mkdir -p \
     artifacts/metrics \
     artifacts/reports
 
+
+# check .venv is created
+RUN ls -la /app/.venv/bin/python
+
 # Default command: train then evaluate
-ENTRYPOINT ["uv", "run", "--no-sync", "python", "-m", "services.training.train"]
+ENTRYPOINT ["/app/.venv/bin/python", "-m", "services.training.train"]

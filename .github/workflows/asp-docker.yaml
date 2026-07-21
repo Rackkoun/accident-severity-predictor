@@ -23,4 +23,4 @@ jobs:
       - name: Smoke test
         run: |
           docker run --rm --entrypoint uv asp-training:latest \
-            uv run --no-sync python -c "import services.training.train; print('OK')"
+            run --no-sync python -c "import services.training.train; print('OK')"
