@@ -190,7 +190,6 @@ docker run --rm -v ${PWD}/data:/app/data -v ${PWD}/artifacts:/app/artifacts asp-
 ```
 
 
-
 ---
 
 ## Good Practices
