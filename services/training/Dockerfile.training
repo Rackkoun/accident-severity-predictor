@@ -27,4 +27,4 @@ RUN mkdir -p \
     artifacts/reports
 
 # Default command: train then evaluate
-ENTRYPOINT ["uv", "run", "python", "-m", "services.training.train"]
+ENTRYPOINT ["uv", "run", "--no-sync", "python", "-m", "services.training.train"]

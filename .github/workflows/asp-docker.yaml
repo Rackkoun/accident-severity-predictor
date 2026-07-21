@@ -20,11 +20,7 @@ jobs:
             -f services/training/Dockerfile.training \
             -t asp-training:latest .
 
-      - name: Smoke test (Imports only)
+      - name: Smoke test
         run: |
           docker run --rm --entrypoint uv asp-training:latest \
-            run python -c "
-              from services.training.src.train_model import run_training
-              from services.training.src.evaluate_model import run_evaluation
-              print('Training container OK')
-            "
+            uv run --no-sync python -c "import services.training.train; print('OK')"
