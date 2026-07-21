@@ -25,26 +25,16 @@ logger = get_logger(__name__)
 
 
 def _latest_model_path(model_dir: Path, model_name: str) -> Path:
-    """Find the latest model file matching model_name or model_name_*.joblib."""
-    model_dir = Path(model_dir)
+    """return the latest version of a trained model."""
 
-    # Exact match first
-    exact = model_dir / f"{model_name}.joblib"
-    if exact.exists():
-        return exact
-
-    # Look for versioned models: model_name_*.joblib
-    pattern = f"{model_name}_*.joblib"
-    files = list(model_dir.glob(pattern))
+    files = list(model_dir.glob(f"{model_name}_*.joblib"))
 
     if not files:
         raise FileNotFoundError(
-            f"No trained model found for '{model_name}' in '{model_dir}'"
+            f"No trained model found for '{model_name}_*.joblib'"
         )
 
-    # Sort by modification time (most recent first)
-    latest = max(files, key=lambda p: p.stat().st_mtime)
-    return latest
+    return max(files, key=lambda p: p.stat().st_mtime)
 
 
 def run_evaluation(
@@ -65,6 +55,7 @@ def run_evaluation(
 
     # Extract actual model name from filename for outputs
     actual_model_name = model_path.stem
+    logger.info(f"Evaluating model: {actual_model_name}")
     processed_data_dir = Path(processed_data_dir)
 
     logger.info("Loading test dataset...")
@@ -81,6 +72,14 @@ def run_evaluation(
         "Recall": recall_score(y_test, y_pred),
         "F1 Score": f1_score(y_test, y_pred),
     }
+
+    logger.info(
+        "Evaluation completed | "
+        f"Accuracy={metrics['Accuracy']:.4f} | "
+        f"Precision={metrics['Precision']:.4f} | "
+        f"Recall={metrics['Recall']:.4f} | "
+        f"F1={metrics['F1 Score']:.4f}"
+    )
 
     metrics_path = Path(metrics_dir) / f"{actual_model_name}_metrics.json"
 

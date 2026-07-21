@@ -30,18 +30,11 @@ def trained_model() -> RandomForestClassifier:
     model.fit(X, y)
     return model
 
-def test_generate_model_name_first_time(tmp_path: Path) -> None:
-    """First model should keep base name."""
-    name = _generate_model_name("model", tmp_path)
-    assert name == "model"
+def test_generate_model_name() -> None:
+    name = _generate_model_name("model")
 
-
-def test_generate_model_name_existing(tmp_path: Path) -> None:
-    """Second model should get timestamp suffix."""
-    (tmp_path / "model.joblib").write_text("dummy")
-    name = _generate_model_name("model", tmp_path)
     assert name.startswith("model_")
-    assert len(name) > len("model_")  # has timestamp
+    assert len(name) > len("model_")
 
 
 def test_run_training_returns_model(training_data: Path, tmp_path: Path) -> None:
@@ -63,12 +56,18 @@ def test_run_training_saves_artifacts(training_data: Path, tmp_path: Path) -> No
         model_name="test",
         model_parameters={"n_estimators": 10, "random_state": 42},
     )
-    assert (tmp_path / "models" / "test.joblib").exists()
-    assert (tmp_path / "models" / "test_features.json").exists()
+    models = list((tmp_path / "models").glob("test_*.joblib"))
+    features = list((tmp_path / "models").glob("test_*_features.json"))
+
+    assert len(models) == 1
+    assert len(features) == 1
 
 
 def test_run_training_auto_versions(training_data: Path, tmp_path: Path) -> None:
     """Running twice should create two versions."""
+
+    import time
+
     models_dir = tmp_path / "models"
 
     run_training(
@@ -79,6 +78,8 @@ def test_run_training_auto_versions(training_data: Path, tmp_path: Path) -> None
         model_parameters={"n_estimators": 10, "random_state": 42},
     )
 
+    time.sleep(1)
+
     run_training(
         processed_data_dir=training_data,
         model_out_dir=models_dir,
@@ -88,7 +89,7 @@ def test_run_training_auto_versions(training_data: Path, tmp_path: Path) -> None
     )
 
     joblibs = list(models_dir.glob("test*.joblib"))
-    assert len(joblibs) >=1
+    assert len(joblibs) >= 2
 
 
 def test_run_training_missing_data(tmp_path: Path) -> None:

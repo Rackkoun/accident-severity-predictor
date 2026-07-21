@@ -16,14 +16,8 @@ from common.utils.asp_logging import get_logger
 logger = get_logger(__name__)
 
 
-def _generate_model_name(base_name: str, model_dir: str | Path) -> str:
-    """Generate a unique model name with timestamp if base model already exists."""
-    model_dir = Path(model_dir)
-    base_path = model_dir / f"{base_name}.joblib"
-
-    if not base_path.exists():
-        return base_name
-
+def _generate_model_name(base_name: str) -> str:
+    """generate a timestamped model name."""
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     return f"{base_name}_{timestamp}"
 
@@ -49,9 +43,8 @@ def run_training(
     model.fit(X_train, y_train)
 
     # Auto-versioning: if model.joblib exists, use model_timestamp.joblib
-    final_model_name = _generate_model_name(model_name, model_out_dir)
-    if final_model_name != model_name:
-        logger.info(f"Base model '{model_name}' exists. Saving as '{final_model_name}' instead.")
+    final_model_name = _generate_model_name(model_name)
+    logger.info(f"Base model '{model_name}' exists. Saving as '{final_model_name}' instead.")
 
     logger.info("Saving model artifacts...")
     save_model_artifacts(
@@ -60,7 +53,7 @@ def run_training(
         model_parameters=model_parameters,
         reports_dir=reports_dir,
         model_out_dir=model_out_dir,
-        model_name=model_name,
+        model_name=final_model_name,
         top_n_features=top_n_features,
     )
 

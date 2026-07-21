@@ -152,6 +152,10 @@ addopts = [
     "--cov-fail-under=80",
     "-ra",
 ]
+filterwarnings = [
+    "ignore::DeprecationWarning:joblib.*:0",     # joblib
+    "ignore::UserWarning:sklearn.*:0",           # sklearn feature names
+]
 
 [tool.coverage.run]
 source = [

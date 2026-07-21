@@ -18,11 +18,11 @@ def eval_setup(tmp_path: Path) -> tuple[Path, Path, Path, Path, str]:
     model_dir.mkdir()
 
     # create model
-    x = [[1, 2], [3, 4], [5, 6], [7, 8]]
-    y = [0, 1, 0, 1]
+    x = pd.DataFrame({"f1": [1.0, 3.0, 5.0, 7.0], "f2": [2.0, 4.0, 6.0, 8.0]})
+    y = pd.Series([0, 1, 0, 1])
     model = RandomForestClassifier(n_estimators=10, random_state=42)
     model.fit(x, y)
-    joblib.dump(model, model_dir / "test_model.joblib")
+    joblib.dump(model, model_dir / "test_model_20260721120000.joblib")
 
     # test data
     proc = tmp_path / "processed"
@@ -54,21 +54,12 @@ def versioned_models(tmp_path: Path) -> Path:
         model = RandomForestClassifier(n_estimators=5, random_state=i)
         model.fit(x, y)
         joblib.dump(model, model_dir / f"model_20260720{i:02d}0000.joblib")
+        
+        import time
+        time.sleep(0.5) # ensure different mtimes
 
     return model_dir
 
-
-def test_latest_model_path_exact_match(versioned_models: Path) -> None:
-    """if exact match exists, return it."""
-    # Create exact match
-    x = [[1, 2], [3, 4]]
-    y = [0, 1]
-    model = RandomForestClassifier(n_estimators=5, random_state=99)
-    model.fit(x, y)
-    joblib.dump(model, versioned_models / "model.joblib")
-
-    path = _latest_model_path(versioned_models, "model")
-    assert path.name == "model.joblib"
 
 
 def test_latest_model_path_versioned(versioned_models: Path) -> None:
