@@ -54,7 +54,7 @@ def versioned_models(tmp_path: Path) -> Path:
         model = RandomForestClassifier(n_estimators=5, random_state=i)
         model.fit(x, y)
         joblib.dump(model, model_dir / f"model_20260720{i:02d}0000.joblib")
-        
+
         import time
         time.sleep(0.5) # ensure different mtimes
 

@@ -1,0 +1,30 @@
+name: ASP Docker
+
+on:
+  workflow_call:
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build training image
+        run: |
+          docker build \
+            -f services/training/Dockerfile.training \
+            -t asp-training:latest .
+
+      - name: Smoke test
+        run: |
+          docker run --rm asp-training:latest \
+            python -c "
+              from services.training.src.train_model import run_training
+              from services.training.src.evaluate_model import run_evaluation
+              print('Training container OK')
+            "

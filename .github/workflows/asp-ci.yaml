@@ -18,3 +18,7 @@ jobs:
   tests:
     needs: lint
     uses: ./.github/workflows/asp-tests.yaml
+  
+  docker:
+    needs: tests
+    uses: ./.github/workflows/asp-docker.yaml

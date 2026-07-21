@@ -159,7 +159,7 @@ Categories:
 1. Set `YEAR` variable in the script `./common/data/download_raw_data.py`
 2. Run 
     ```
-    python ./common/data/download_raw_data.py
+    python -m common.data.download_data
     ```
 
 **Create data splits**:
@@ -167,23 +167,27 @@ Categories:
 2. Optionally set `EXCLUSIVE_TEST_YEAR` to specify if the test set should represent a specific year.
 3. Run 
     ```
-    python ./common/make_dataset.py
+    python -m common.data.make_dataset
     ```
 
-**Run training**:
+**Run training and evaluation**:
 1. Set `MODEL_PARAMETERS` dict in the script `./services/training/train.py` to specify model parameters.
 2. Run 
     ``` 
-    python ./services/training/train.py --mode=train
+    python -m services.training.train
     ```
 
-**Run evaluation**:
-1. From the trained models look for the name of the model you want to evaluate.
-2. Run `
-    ```
-    python ./services/training/train.py --mode=eval --model_name=<MODEL NAME TO TEST>
-    ```
+**Docker**
 
+```Shell
+# Build (in root dir):
+docker build -f services/training/Dockerfile.training -t asp-training:latest .
+# test docker container (this will mount the path to processed file from your disk drive)
+# Linux / Mac
+docker run --rm -v $(pwd)/data:/app/data -v $(pwd)/artifacts:/app/artifacts asp-training
+# Windows PowerShell
+docker run --rm -v ${PWD}/data:/app/data -v ${PWD}/artifacts:/app/artifacts asp-training
+```
 
 
 
