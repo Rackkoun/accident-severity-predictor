@@ -23,12 +23,14 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --group dev \
-                     --group backend \
-                     --group training
+        run: |
+          uv sync \
+            --group dev \
+            --group backend \
+            --group training
 
       - name: Run Ruff check
-        run: uv run ruff check check .
+        run: uv run ruff check .
 
       - name: Run Ruff format check
         run: uv run ruff format --check .

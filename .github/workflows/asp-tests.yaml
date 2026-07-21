@@ -23,9 +23,11 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --group dev \
-                     --group training \
-                     --group backend
+        run: |
+          uv sync \
+            --group dev \
+            --group backend \
+            --group training
 
       - name: Run tests with coverage
         run: uv run pytest
