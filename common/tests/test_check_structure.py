@@ -16,11 +16,13 @@ def test_dir_exists_false(tmp_path: Path) -> None:
     """return false"""
     assert dir_exists(tmp_path / "missing") is False
 
+
 def test_dir_exists_on_file(tmp_path: Path) -> None:
     """create a file and test as dir to simulate dir not exists"""
     f = tmp_path / "file.txt"
     f.touch()
     assert dir_exists(f) is False
+
 
 def test_file_exists_true(tmp_path: Path) -> None:
     f = tmp_path / "file.txt"

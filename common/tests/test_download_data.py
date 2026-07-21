@@ -24,6 +24,7 @@ def api_response() -> dict:
         ]
     }
 
+
 @patch("common.data.download_data.requests.get")
 def test_downloads_2021_csvs(mock_get: MagicMock, api_response: dict, tmp_path: Path) -> None:
     api_mock = MagicMock()

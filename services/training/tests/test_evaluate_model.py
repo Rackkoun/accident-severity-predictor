@@ -27,9 +27,7 @@ def eval_setup(tmp_path: Path) -> tuple[Path, Path, Path, Path, str]:
     # test data
     proc = tmp_path / "processed"
     proc.mkdir()
-    pd.DataFrame({"f1": [1.0, 3.0, 5.0], "f2": [2.0, 4.0, 6.0]}).to_csv(
-        proc / "X_test.csv", index=False
-    )
+    pd.DataFrame({"f1": [1.0, 3.0, 5.0], "f2": [2.0, 4.0, 6.0]}).to_csv(proc / "X_test.csv", index=False)
     pd.Series([0, 1, 0]).to_csv(proc / "y_test.csv", index=False)
 
     # output dirs
@@ -56,10 +54,10 @@ def versioned_models(tmp_path: Path) -> Path:
         joblib.dump(model, model_dir / f"model_20260720{i:02d}0000.joblib")
 
         import time
-        time.sleep(0.5) # ensure different mtimes
+
+        time.sleep(0.5)  # ensure different mtimes
 
     return model_dir
-
 
 
 def test_latest_model_path_versioned(versioned_models: Path) -> None:

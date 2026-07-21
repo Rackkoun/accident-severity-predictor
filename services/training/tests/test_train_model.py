@@ -1,4 +1,3 @@
-
 """
 Tests for train_model
 """
@@ -29,6 +28,7 @@ def trained_model() -> RandomForestClassifier:
     model = RandomForestClassifier(n_estimators=10, random_state=42)
     model.fit(X, y)
     return model
+
 
 def test_generate_model_name() -> None:
     name = _generate_model_name("model")

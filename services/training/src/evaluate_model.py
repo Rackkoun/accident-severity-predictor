@@ -30,20 +30,18 @@ def _latest_model_path(model_dir: Path, model_name: str) -> Path:
     files = list(model_dir.glob(f"{model_name}_*.joblib"))
 
     if not files:
-        raise FileNotFoundError(
-            f"No trained model found for '{model_name}_*.joblib'"
-        )
+        raise FileNotFoundError(f"No trained model found for '{model_name}_*.joblib'")
 
     return max(files, key=lambda p: p.stat().st_mtime)
 
 
 def run_evaluation(
-        model_name: str,
-        processed_data_dir: str | Path,
-        model_dir: str | Path,
-        metrics_dir: str | Path,
-        reports_dir: str | Path,
-    ) -> dict:
+    model_name: str,
+    processed_data_dir: str | Path,
+    model_dir: str | Path,
+    metrics_dir: str | Path,
+    reports_dir: str | Path,
+) -> dict:
     """evaluate a trained model on the test set and save metrics + confusion matrix. Return the metrics dict."""
 
     model_dir = Path(model_dir)
@@ -51,7 +49,6 @@ def run_evaluation(
 
     logger.info(f"Loading model: {model_path}")
     model = joblib.load(model_path)
-
 
     # Extract actual model name from filename for outputs
     actual_model_name = model_path.stem
@@ -89,7 +86,12 @@ def run_evaluation(
 
     fig, ax = plt.subplots(figsize=(6, 6))
     ConfusionMatrixDisplay.from_predictions(
-        y_test, y_pred, cmap="Blues", normalize="true", ax=ax, colorbar=False,
+        y_test,
+        y_pred,
+        cmap="Blues",
+        normalize="true",
+        ax=ax,
+        colorbar=False,
     )
     plt.tight_layout()
 

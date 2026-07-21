@@ -2,6 +2,7 @@
 """
 Custom log
 """
+
 import logging
 import sys
 

@@ -17,45 +17,50 @@ from common.data.clean_data import (
 
 @pytest.fixture
 def users_df():
-    return pd.DataFrame({
-        "Num_Acc": [2021000001, 2021000001, 2021000002],
-        "num_veh": ["A01", "B01", "A02"],
-        "id_vehicule": [1, 2, 1],
-        "grav": [1, 2, 3],
-        "an_nais": [1990, 1985, 2000],
-        "place": [1, 2, 1],
-        "catu": [1, 1, 1],
-        "sexe": [1, 2, 1],
-        "trajet": [1, 1, 1],
-        "secu1": [1, 1, 1],
-    })
+    return pd.DataFrame(
+        {
+            "Num_Acc": [2021000001, 2021000001, 2021000002],
+            "num_veh": ["A01", "B01", "A02"],
+            "id_vehicule": [1, 2, 1],
+            "grav": [1, 2, 3],
+            "an_nais": [1990, 1985, 2000],
+            "place": [1, 2, 1],
+            "catu": [1, 1, 1],
+            "sexe": [1, 2, 1],
+            "trajet": [1, 1, 1],
+            "secu1": [1, 1, 1],
+        }
+    )
 
 
 @pytest.fixture
 def vehicles_df():
-    return pd.DataFrame({
-        "Num_Acc": [2021000001, 2021000001, 2021000002],
-        "num_veh": ["A01", "B01", "A02"],
-        "id_vehicule": [1, 2, 1],
-        "catv": [1, 7, 99],  # mapping: 1->1, 7->2, 99->0
-        "motor": [1, 1, 1],
-        "obsm": [1, 1, 1],
-    })
+    return pd.DataFrame(
+        {
+            "Num_Acc": [2021000001, 2021000001, 2021000002],
+            "num_veh": ["A01", "B01", "A02"],
+            "id_vehicule": [1, 2, 1],
+            "catv": [1, 7, 99],  # mapping: 1->1, 7->2, 99->0
+            "motor": [1, 1, 1],
+            "obsm": [1, 1, 1],
+        }
+    )
 
 
 @pytest.fixture
 def characteristics_df():
-    return pd.DataFrame({
-        "Num_Acc": [2021000001, 2021000002],
-        "dep": ["75", "2A"],
-        "com": ["75001", "2A001"],
-        "hrmn": ["08:30", "14:45"],
-        "an": [2021, 2021],
-        "lat": ["48.8566", "41.9260"],
-        "long": ["2.3522", "8.7376"],
-        "atm": [1, 2],
-    })
-
+    return pd.DataFrame(
+        {
+            "Num_Acc": [2021000001, 2021000002],
+            "dep": ["75", "2A"],
+            "com": ["75001", "2A001"],
+            "hrmn": ["08:30", "14:45"],
+            "an": [2021, 2021],
+            "lat": ["48.8566", "41.9260"],
+            "long": ["2.3522", "8.7376"],
+            "atm": [1, 2],
+        }
+    )
 
 
 def test_correct_id_anomaly():
@@ -90,18 +95,20 @@ def test_process_users_victim_age(users_df):
 
 
 def test_process_users_outlier_age():
-    df = pd.DataFrame({
-        "Num_Acc": [2021000001],
-        "num_veh": ["A"],
-        "id_vehicule": [1],
-        "grav": [1],
-        "an_nais": [1800],
-        "place": [1],
-        "catu": [1],
-        "sexe": [1],
-        "trajet": [1],
-        "secu1": [1],
-    })
+    df = pd.DataFrame(
+        {
+            "Num_Acc": [2021000001],
+            "num_veh": ["A"],
+            "id_vehicule": [1],
+            "grav": [1],
+            "an_nais": [1800],
+            "place": [1],
+            "catu": [1],
+            "sexe": [1],
+            "trajet": [1],
+            "secu1": [1],
+        }
+    )
     result = process_users(df)
     assert pd.isna(result["victim_age"].iloc[0])
 
@@ -145,6 +152,7 @@ def test_process_characteristics_weather(characteristics_df):
     result = process_characteristics(characteristics_df)
     assert result["atm"].iloc[0] == 0
     assert result["atm"].iloc[1] == 1
+
 
 def test_process_places():
     df = pd.DataFrame({"Num_Acc": [1, 2], "catr": [1, 2]})

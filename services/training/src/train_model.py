@@ -1,6 +1,7 @@
 """
 Model training
 """
+
 import json
 from datetime import datetime
 from pathlib import Path
@@ -21,14 +22,15 @@ def _generate_model_name(base_name: str) -> str:
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     return f"{base_name}_{timestamp}"
 
+
 def run_training(
-        processed_data_dir: str | Path,
-        model_out_dir: str | Path,
-        reports_dir: str | Path,
-        model_name: str,
-        model_parameters: dict,
-        top_n_features: int = 20,
-    ) -> RandomForestClassifier:
+    processed_data_dir: str | Path,
+    model_out_dir: str | Path,
+    reports_dir: str | Path,
+    model_name: str,
+    model_parameters: dict,
+    top_n_features: int = 20,
+) -> RandomForestClassifier:
     """train the RandomForest (params from the notebook benchmark) and save artifacts. Return the model."""
 
     processed_data_dir = Path(processed_data_dir)
@@ -62,14 +64,14 @@ def run_training(
 
 
 def save_model_artifacts(
-        model: RandomForestClassifier,
-        features: list[str],
-        model_parameters: dict,
-        model_out_dir: str | Path,
-        reports_dir: str | Path,
-        model_name: str,
-        top_n_features: int = 20,
-    ) -> dict[str, Path]:
+    model: RandomForestClassifier,
+    features: list[str],
+    model_parameters: dict,
+    model_out_dir: str | Path,
+    reports_dir: str | Path,
+    model_name: str,
+    top_n_features: int = 20,
+) -> dict[str, Path]:
     """save model, features list, parameters and a feature-importance plot. Return the output paths."""
 
     model_out_dir = Path(model_out_dir)
@@ -94,10 +96,7 @@ def save_model_artifacts(
         json.dump(model_parameters, f, indent=4)
 
     feature_importance = (
-        pd.Series(model.feature_importances_, index=features)
-        .sort_values(ascending=False)
-        .head(top_n_features)
-        .sort_values(ascending=True)
+        pd.Series(model.feature_importances_, index=features).sort_values(ascending=False).head(top_n_features).sort_values(ascending=True)
     )
     fig, ax = plt.subplots(figsize=(8, max(4, len(feature_importance) * 0.3)))
     feature_importance.plot.barh(ax=ax)

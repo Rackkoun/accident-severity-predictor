@@ -31,7 +31,7 @@ DATA_SCRIPTS_DIR = COMMON_DIR / "data"
 UTILS_DIR = COMMON_DIR / "utils"
 
 # download dataset api url configuration
-API_CONFIG: dict[str, str]  = {
+API_CONFIG: dict[str, str] = {
     "dataset_url": "https://www.data.gouv.fr/api/1/datasets/",
     "dataset_slug": "bases-de-donnees-annuelles-des-accidents-corporels-de-la-circulation-routiere-annees-de-2005-a-2024/",
 }
@@ -56,12 +56,4 @@ MODEL_CONFIG: dict[str, Any] = {
     "top_n_features": 20,
 }
 
-REQUIRED_DIRS = [
-    RAW_DATA_DIR,
-    PROCESSED_DATA_DIR,
-    EXTERNAL_DATA_DIR,
-    MODEL_DIR,
-    METRIC_DIR,
-    REPORT_DIR
-]
-
+REQUIRED_DIRS = [RAW_DATA_DIR, PROCESSED_DATA_DIR, EXTERNAL_DATA_DIR, MODEL_DIR, METRIC_DIR, REPORT_DIR]

@@ -1,6 +1,7 @@
 """
 training entrypoint
 """
+
 from common.utils.paths import (
     METRIC_DIR,
     MODEL_CONFIG,
@@ -19,7 +20,7 @@ def main() -> None:
         reports_dir=REPORT_DIR,
         model_name=MODEL_CONFIG["model_name"],
         model_parameters=MODEL_CONFIG["model_parameters"],
-        top_n_features=MODEL_CONFIG["top_n_features"]
+        top_n_features=MODEL_CONFIG["top_n_features"],
     )
 
     # eval is used here for docker entrypoint
@@ -30,7 +31,7 @@ def main() -> None:
         metrics_dir=METRIC_DIR,
         reports_dir=REPORT_DIR,
     )
+
+
 if __name__ == "__main__":
     main()
-
-
