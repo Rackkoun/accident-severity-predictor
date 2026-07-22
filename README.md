@@ -153,6 +153,45 @@ Categories:
 
 ---
 
+## Basic pipeline
+
+**Download raw data for a specific year**:
+1. Set `YEAR` variable in the script `./common/data/download_raw_data.py`
+2. Run 
+    ```
+    python -m common.data.download_data
+    ```
+
+**Create data splits**:
+1. Set `YEARS` list in the script `./common/data/make_dataset.py` to specify which years from raw data to include.
+2. Optionally set `EXCLUSIVE_TEST_YEAR` to specify if the test set should represent a specific year.
+3. Run 
+    ```
+    python -m common.data.make_dataset
+    ```
+
+**Run training and evaluation**:
+1. Set `MODEL_PARAMETERS` dict in the script `./services/training/train.py` to specify model parameters.
+2. Run 
+    ``` 
+    python -m services.training.train
+    ```
+
+**Docker**
+
+```Shell
+# Build (in root dir):
+docker build -f services/training/Dockerfile.training -t asp-training:latest .
+# test docker container (this will mount the path to processed file from your disk drive)
+# Linux / Mac
+docker run --rm -v $(pwd)/data:/app/data -v $(pwd)/artifacts:/app/artifacts asp-training
+# Windows PowerShell
+docker run --rm -v ${PWD}/data:/app/data -v ${PWD}/artifacts:/app/artifacts asp-training
+```
+
+
+---
+
 ## Good Practices
 
 * Keep pull requests small and focused.

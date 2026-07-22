@@ -12,10 +12,13 @@ on:
       - develop
 
 jobs:
-  ci:
-    runs-on: ubuntu-latest
+  lint:
+    uses: ./.github/workflows/asp-lint.yaml
 
-    steps:
-      - uses: actions/checkout@v5
-      - name: Verify CI pipeline
-        run: echo "ASP CI pipeline completed successfully (^v^)"
+  tests:
+    needs: lint
+    uses: ./.github/workflows/asp-tests.yaml
+  
+  docker:
+    needs: tests
+    uses: ./.github/workflows/asp-docker.yaml
