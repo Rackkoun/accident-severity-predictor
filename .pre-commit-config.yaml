@@ -1,0 +1,36 @@
+# .pre-commit-config.yaml
+# Runs all quality checks before each commit
+# Install: uv run pre-commit install
+# Run manually: uv run pre-commit run --all-files
+
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: 🔍 Ruff Check
+        entry: uv run ruff check . --fix
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      - id: ruff-format
+        name: 🎨 Ruff Format
+        entry: uv run ruff format . --check
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      - id: mypy
+        name: 📝 MyPy Type Check
+        entry: uv run mypy common/ services/
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      - id: pytest
+        name: 🧪 Pytest + Coverage
+        entry: uv run pytest
+        language: system
+        types: [python]
+        pass_filenames: false
+        always_run: true
