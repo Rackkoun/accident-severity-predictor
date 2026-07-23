@@ -156,7 +156,7 @@ Categories:
 ## Basic pipeline
 
 **Download raw data for a specific year**:
-1. Set `YEAR` variable in the script `./common/data/download_raw_data.py`
+1. Set `YEAR` variable in the script `./common/data/download_data.py`
 2. Run 
     ```
     python -m common.data.download_data
@@ -189,6 +189,74 @@ docker run --rm -v $(pwd)/data:/app/data -v $(pwd)/artifacts:/app/artifacts asp-
 docker run --rm -v ${PWD}/data:/app/data -v ${PWD}/artifacts:/app/artifacts asp-training
 ```
 
+
+---
+
+## 🛠️ Pipeline Automation & Docker
+
+We use a plattform-independent `Makefile` to automate the local environment setup, container execution, and data/model tracking. 
+
+To run the ML training pipeline inside the Docker container, you no longer need long manual commands. Simply make sure your Docker Daemon is running, build the image once, and use `make`:
+
+```shell
+# Build the training image once (run in root directory):
+docker build -f services/training/Dockerfile.training -t asp-training:latest .
+
+# Run the training and evaluation inside the container:
+make train-model
+```
+
+---
+
+## 📦 Data & Model Versioning (DVC)
+
+We use **DVC (Data Version Control)** combined with **DagsHub** to version control our large datasets and heavy `.joblib` models. 
+
+### 1. Setup & Credentials (Once per Machine)
+
+If you have just cloned or pulled this branch, synchronize your environment once to ensure DVC is installed locally:
+```bash
+make init-project
+```
+
+Next, configure your personal DagsHub credentials to unlock the shared remote storage (do **not** commit these, they stay private on your machine):
+```bash
+uv run dvc remote modify origin --local access_key_id <YOUR_DAGSHUB_USERNAME>
+uv run dvc remote modify origin --local secret_access_key <YOUR_DAGSHUB_TOKEN>
+```
+### 2. Configure Personal DagsHub Credentials (Mandatory)
+
+> ⚠️ **IMPORTANT:** To allow DVC to pull or push data, you must configure your personal DagsHub credentials **once per machine**. Never commit these credentials to Git!
+
+1. Go to **DagsHub.com** to the repo ➡️ click on **data** (green button, top right) ➡️ go to **Setup S3 credentials** ➡️ **Copy commands** (make sure to click on the eye to see the keys before copying).
+2. Run the copied commands in your terminal. It should look like this:
+
+```bash
+v run dvc remote modify origin --local access_key_id <YOUR_ACCESS_KEY_ID>
+uv run dvc remote modify origin --local secret_access_key <YOUR_SECRET_ACCESS_KEY>
+```
+
+*Note: The `--local` flag ensures that your credentials are saved in `.dvc/config.local`, which is strictly ignored by Git and stays safely on your machine.*
+
+### 3. Fetching Existing Data & Models from the Cloud
+
+If you freshly cloned the repository or switched to this branch, the datasets and models will be missing locally. To pull the exact versions belonging to the current code state from DagsHub, simply run:
+
+```bash
+make dvc-pull
+```
+
+### 4. Run the End-to-End Automated Pipeline
+
+To execute the entire lifecycle – **training the model in Docker, tracking the new artifacts with DVC, and pushing them to DagsHub** – run a single command:
+
+```bash
+make run-pipeline
+```
+
+*Note: DVC automatically protects the heavy binaries (`data/` and `model_*.joblib`), while small configuration text files (like `parameter.json` or `feature.json`) are logged via MLflow.*
+
+***
 
 ---
 
