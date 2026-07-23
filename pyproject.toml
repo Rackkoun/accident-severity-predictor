@@ -9,6 +9,7 @@ dependencies = []
 [dependency-groups]
 backend = [
     "fastapi>=0.139.0",
+    "httpx2>=2.9.0",
     "pydantic>=2.13.4",
     "pydantic-settings>=2.14.2",
     "requests>=2.34.2",
@@ -128,7 +129,8 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = [
     "common.tests.*", 
-    "services.training.tests.*"
+    "services.training.tests.*",
+    "services.backend.tests.*",
 ]
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
@@ -139,6 +141,7 @@ check_untyped_defs = false
 testpaths = [
     "common/tests", 
     "services/training/tests",
+    "services/backend/tests",
 ]
 pythonpath = ["."]
 addopts = [
