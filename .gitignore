@@ -21,11 +21,15 @@ env/
 ENV/
 
 # =============================================================================
-# Environment variables
+# Environment variables & Secrets
 # =============================================================================
 .env
 .env.*
 !.env.example
+*.key
+*.pem
+secrets/
+credentials/
 
 # =============================================================================
 # IDE
@@ -73,7 +77,14 @@ logs/
 # =============================================================================
 # ML Models & Artifacts
 # =============================================================================
-artifacts/*
+artifacts/models/*
+artifacts/metrics/*
+artifacts/reports/*
+
+!artifacts/models.dvc
+!artifacts/metrics.dvc
+!artifacts/reports.dvc
+
 !artifacts/models/.gitkeep
 !artifacts/metrics/.gitkeep
 !artifacts/reports/.gitkeep
@@ -135,3 +146,14 @@ configs/*.local.*
 # uv
 # =============================================================================
 uv-cache/
+
+
+# =============================================================================
+# DVC
+# =============================================================================
+.dvc/config.local
+.dvc/tmp/
+.dvc/cache/
+
+# dvc generated files
+*.dvc.lock

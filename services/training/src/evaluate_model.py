@@ -45,6 +45,10 @@ def run_evaluation(
     """evaluate a trained model on the test set and save metrics + confusion matrix. Return the metrics dict."""
 
     model_dir = Path(model_dir)
+    # create metrics dir if not exists
+    metrics_dir = Path(metrics_dir)
+    metrics_dir.mkdir(parents=True, exist_ok=True)
+
     model_path = _latest_model_path(model_dir, model_name)
 
     logger.info(f"Loading model: {model_path}")
