@@ -30,6 +30,8 @@ def _build_command(
         "--rm",
         "--network",
         "asp-network",
+        # "--user",
+        # f"{os.getuid()}:{os.getgid()}",
         "-v",
         f"{host_data_dir}:/app/data",
         "-v",

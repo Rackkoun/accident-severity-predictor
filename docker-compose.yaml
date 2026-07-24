@@ -9,6 +9,12 @@ services:
     build:
       context: .
       dockerfile: services/backend/Dockerfile.backend
+      args:
+        USER_ID: ${UID:-1000}
+        GROUP_ID: ${GID:-1000}
+        # solve: ERROR - stderr: permission denied
+        # while trying to connect to the docker API at unix:///var/run/docker.sock
+        # DOCKER_GID: ${DOCKER_GID}
     image: asp-backend:latest
     container_name: asp-backend
     ports:
@@ -37,6 +43,9 @@ services:
     build:
       context: .
       dockerfile: services/training/Dockerfile.training
+      args:
+        USER_ID: ${UID}
+        GROUP_ID: ${GID}
     image: asp-training:latest
     profiles: ["build-only"]  # add profile so it not starts with docker compose up
     # only to comfirm build is done
