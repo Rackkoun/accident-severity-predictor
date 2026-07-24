@@ -12,7 +12,7 @@ An MLOps project focused on predicting the severity of road accidents in France 
 
 This project uses **uv** as the Python package manager. Python 3.12 is required.
 
-You can install it using 
+You can install it using
 
 ```Bash
 uv python install 3.12
@@ -157,7 +157,7 @@ Categories:
 
 **Download raw data for a specific year**:
 1. Set `YEAR` variable in the script `./common/data/download_raw_data.py`
-2. Run 
+2. Run
     ```
     python -m common.data.download_data
     ```
@@ -165,15 +165,15 @@ Categories:
 **Create data splits**:
 1. Set `YEARS` list in the script `./common/data/make_dataset.py` to specify which years from raw data to include.
 2. Optionally set `EXCLUSIVE_TEST_YEAR` to specify if the test set should represent a specific year.
-3. Run 
+3. Run
     ```
     python -m common.data.make_dataset
     ```
 
 **Run training and evaluation**:
 1. Set `MODEL_PARAMETERS` dict in the script `./services/training/train.py` to specify model parameters.
-2. Run 
-    ``` 
+2. Run
+    ```
     python -m services.training.train
     ```
 

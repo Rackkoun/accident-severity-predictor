@@ -37,7 +37,7 @@ jobs:
         run: |
           docker run --rm --entrypoint uv ${{ matrix.image }} \
             run --no-sync ${{ matrix.smoke_cmd }}
-      
+
       - name: 🏥 Integration test (backend)
         if: matrix.service == 'backend'
         run: |

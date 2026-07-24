@@ -14,7 +14,7 @@ jobs:
   test-suite:
     needs: code-quality
     uses: ./.github/workflows/asp-test-suite.yaml
-  
+
   container-build:
     needs: test-suite
     uses: ./.github/workflows/asp-container-build.yaml

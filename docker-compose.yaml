@@ -17,7 +17,7 @@ services:
       - ./data:/app/data
       - ./artifacts:/app/artifacts
       - /var/run/docker.sock:/var/run/docker.sock
-    
+
     # save abs path in an .env file
     environment:
       HOST_DATA_DIR: ${HOST_PROJECT_ROOT}/data

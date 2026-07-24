@@ -18,7 +18,7 @@ htmlcov
 mlruns
 *.ipynb
 
-# Tests 
+# Tests
 **/tests/
 **/test_*.py
 conftest.py

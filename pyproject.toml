@@ -107,7 +107,7 @@ warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
 strict_equality = true
-# solve: error: Source file found twice under different module names: 
+# solve: error: Source file found twice under different module names:
 # "asp_logging" and "common.utils.asp_logging"
 explicit_package_bases = true          # avoid conflict name with python packages
 exclude = [                             # exclure non-source dirs
@@ -128,7 +128,7 @@ ignore_missing_imports = true
 # relax strict typing tests
 [[tool.mypy.overrides]]
 module = [
-    "common.tests.*", 
+    "common.tests.*",
     "services.training.tests.*",
     "services.backend.tests.*",
 ]
@@ -139,7 +139,7 @@ check_untyped_defs = false
 # pytest + coverage
 [tool.pytest.ini_options]
 testpaths = [
-    "common/tests", 
+    "common/tests",
     "services/training/tests",
     "services/backend/tests",
 ]
