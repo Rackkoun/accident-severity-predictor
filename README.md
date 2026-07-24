@@ -246,15 +246,29 @@ If you freshly cloned the repository or switched to this branch, the datasets an
 make dvc-pull
 ```
 
-### 4. Run the End-to-End Automated Pipeline
+### 4. Run the End-to-End Automated Pipeline (DVC Pipeline)
 
-To execute the entire lifecycle – **training the model in Docker, tracking the new artifacts with DVC, and pushing them to DagsHub** – run a single command:
+We use a `dvc.yaml` pipeline to orchestrate the data and training steps. DVC automatically tracks your scripts, data splits, and model artifacts. It will intelligently skip steps if no code or data has changed.
+
+To execute the entire training pipeline, track the new artifacts, and push them to DagsHub, run:
 
 ```bash
-make run-pipeline
+# Run the pipeline locally (DVC tracks dependencies and outputs automatically)
+uv run dvc repro
+
+# Push the newly generated data and models to DagsHub S3 storage
+uv run dvc push
 ```
 
-*Note: DVC automatically protects the heavy binaries (`data/` and `model_*.joblib`), while small configuration text files (like `parameter.json` or `feature.json`) are logged via MLflow.*
+*Note: DVC automatically protects the heavy binaries (`data/` and `artifacts/models/`), ensuring they are never accidentally committed to Git, while code and lightweight configurations are managed via Git.*
+
+
+### 🔄 Automated CI/CD Execution (No Manual Action Required)
+
+Thanks to our integrated **GitHub Actions CI/CD Pipeline**, you rarely need to run the training or deployment manually:
+
+* **Automatic Model Verification:** Every time you open a Pull Request, GitHub automatically spins up a runner, installs the environment via `uv`, pulls the latest model from DagsHub via S3, and verifies that the prediction service (`backend`) passes all integration and health checks.
+* **Continuous Training (CD):** Merging code into the main branches triggers the automated orchestration, ensuring that containers are rebuilt and validated without any local hardware dependency.
 
 ***
 
