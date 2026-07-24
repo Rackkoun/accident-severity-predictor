@@ -1,10 +1,10 @@
-name: ASP Lint
+name: 🧪 ASP Test Suite
 
 on:
   workflow_call:
 
 jobs:
-  lint:
+  test:
     runs-on: ubuntu-latest
 
     steps:
@@ -29,11 +29,21 @@ jobs:
             --group backend \
             --group training
 
-      - name: Run Ruff check
-        run: uv run ruff check .
+      - name: 🧪 Run Tests + Coverage
+        run: uv run pytest
 
-      - name: Run Ruff format check
-        run: uv run ruff format --check .
+      - name: 📊 Upload HTML Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: htmlcov/
+          if-no-files-found: ignore
 
-      - name: Run MyPy
-        run: uv run mypy common/ services/
+      - name: 📄 Upload XML Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-xml
+          path: coverage.xml
+          if-no-files-found: ignore

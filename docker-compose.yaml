@@ -1,0 +1,50 @@
+# Accident Severity Predictor (ASP) - docker-compose.yaml
+#
+# Usage:
+#   docker compose up -d --build backend
+#   docker compose down
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: services/backend/Dockerfile.backend
+    image: asp-backend:latest
+    container_name: asp-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./artifacts:/app/artifacts
+      - /var/run/docker.sock:/var/run/docker.sock
+    
+    # save abs path in an .env file
+    environment:
+      HOST_DATA_DIR: ${HOST_PROJECT_ROOT}/data
+      HOST_ARTIFACTS_DIR: ${HOST_PROJECT_ROOT}/artifacts
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - asp-network
+
+  # training service only for building an image
+  training:
+    build:
+      context: .
+      dockerfile: services/training/Dockerfile.training
+    image: asp-training:latest
+    profiles: ["build-only"]  # add profile so it not starts with docker compose up
+    # only to comfirm build is done
+    command: ["echo", "Training image built"]
+    networks:
+      - asp-network
+
+networks:
+  asp-network:
+    name: asp-network
+    driver: bridge

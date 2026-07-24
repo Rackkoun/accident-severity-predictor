@@ -1,0 +1,54 @@
+name: 🐳 ASP Container Build & Smoke Tes
+
+on:
+  workflow_call:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [training, backend]
+        include:
+          - service: training
+            dockerfile: services/training/Dockerfile.training
+            image: asp-training:latest
+            smoke_cmd: 'python -c "import services.training.train; print(\"OK\")"'
+
+          - service: backend
+            dockerfile: services/backend/Dockerfile.backend
+            image: asp-backend:latest
+            smoke_cmd: 'python -c "import services.backend.src.main; print(\"OK\")"'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🐳 Build ${{ matrix.service }} image
+        run: |
+          docker build \
+            -f ${{ matrix.dockerfile }} \
+            -t ${{ matrix.image }} .
+
+      - name: 🔥 Smoke test ${{ matrix.service }}
+        run: |
+          docker run --rm --entrypoint uv ${{ matrix.image }} \
+            run --no-sync ${{ matrix.smoke_cmd }}
+      
+      - name: 🏥 Integration test (backend)
+        if: matrix.service == 'backend'
+        run: |
+          docker run -d --name asp-backend-test \
+            -p 8000:8000 \
+            -v "$(pwd)/data:/app/data" \
+            -v "$(pwd)/artifacts:/app/artifacts" \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -e HOST_DATA_DIR="$(pwd)/data" \
+            -e HOST_ARTIFACTS_DIR="$(pwd)/artifacts" \
+            ${{ matrix.image }}
+          sleep 5
+          curl -f http://localhost:8000/api/v1/health || exit 1
+          docker stop asp-backend-test && docker rm asp-backend-test

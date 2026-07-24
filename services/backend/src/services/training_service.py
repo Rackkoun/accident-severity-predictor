@@ -11,12 +11,11 @@ from common.utils.asp_logging import get_logger
 
 logger = get_logger(__name__)
 
-# try to solve: FileNotFoundError: [Errno 2] No such file or directory: '/app/data/processed/X_train.csv'
-# default paths
-DEFAULT_HOST_DATA_DIR = os.getenv("HOST_DATA_DIR", "/app/data")
-DEFAULT_HOST_ARTIFACTS_DIR = os.getenv("HOST_ARTIFACTS_DIR", "/app/artifacts")
-# docker image name for training
 TRAINING_IMAGE = "asp-training:latest"
+
+# Paths resolved by the HOST Docker daemon (must be absolute host paths)
+DEFAULT_HOST_DATA_DIR = os.getenv("HOST_DATA_DIR", os.path.join(os.getcwd(), "data"))
+DEFAULT_HOST_ARTIFACTS_DIR = os.getenv("HOST_ARTIFACTS_DIR", os.path.join(os.getcwd(), "artifacts"))
 
 
 def _build_command(
@@ -24,20 +23,13 @@ def _build_command(
     host_data_dir: str,
     host_artifacts_dir: str,
 ) -> list[str]:
-    """build the docker run command for the training container.
-
-    Args:
-        model_name: Base name for the model.
-        host_data_dir: Absolute path on the DOCKER HOST for data volume.
-        host_artifacts_dir: Absolute path on the DOCKER HOST for artifacts volume.
-
-    Returns:
-        List of command arguments for subprocess.
-    """
+    """build docker run command with host bind mounts."""
     return [
         "docker",
         "run",
         "--rm",
+        "--network",
+        "asp-network",
         "-v",
         f"{host_data_dir}:/app/data",
         "-v",
@@ -49,41 +41,40 @@ def _build_command(
 
 
 def run_training_container(
-    model_name: str = "model",
+    model_name: str | None = None,
     host_data_dir: str | None = None,
     host_artifacts_dir: str | None = None,
     timeout_seconds: int | None = None,
 ) -> dict:
-    """launch the training container and wait for completion.
-
-    uses host paths for volume mounts because the Docker daemon runs on the host.
-    If host paths are not provided, falls back to environment variables
-    HOST_DATA_DIR and HOST_ARTIFACTS_DIR.
+    """
+    launch training container.
 
     Args:
-        model_name: Base name for the model (default: "model").
-        host_data_dir: Absolute path on the Docker host for data.
-            If None, uses HOST_DATA_DIR env var or defaults to /app/data.
-        host_artifacts_dir: Absolute path on the Docker host for artifacts.
-            If None, uses HOST_ARTIFACTS_DIR env var or defaults to /app/artifacts.
-        timeout_seconds: Max time to wait for training (None = no timeout).
+        model_name: Base model name. If None, training script uses default from MODEL_CONFIG.
+        host_data_dir: Absolute host path for data.
+        host_artifacts_dir: Absolute host path for artifacts.
+        timeout_seconds: Optional timeout.
 
     Returns:
-        Dict with status, duration, and container output.
-
-    Raises:
-        RuntimeError: If the training container fails.
-        FileNotFoundError: If docker is not installed in the container.
+        Dict with status, duration, and output.
     """
-    # Resolve host paths
     data_dir = host_data_dir or DEFAULT_HOST_DATA_DIR
     artifacts_dir = host_artifacts_dir or DEFAULT_HOST_ARTIFACTS_DIR
 
+    # ensure abs path
+    data_dir = os.path.abspath(data_dir)
+    artifacts_dir = os.path.abspath(artifacts_dir)
+
+    # train service resolve model name
+    resolved_name = model_name or "model"
+
     logger.info(
-        f"Starting training container (image={TRAINING_IMAGE}, model_name={model_name}, host_data={data_dir}, host_artifacts={artifacts_dir})"
+        f"Starting training container (image={TRAINING_IMAGE}, model_name={resolved_name}, host_data={data_dir}, host_artifacts={artifacts_dir})"
     )
 
-    command = _build_command(model_name, data_dir, artifacts_dir)
+    command = _build_command(resolved_name, data_dir, artifacts_dir)
+    logger.debug(f"Docker command: {' '.join(command)}")
+
     start = time.time()
 
     try:
@@ -97,11 +88,10 @@ def run_training_container(
         duration = time.time() - start
 
         logger.info(f"Training container finished in {duration:.2f}s")
-        logger.debug(f"Container stdout:\n{result.stdout}")
-
         return {
             "status": "success",
             "duration_seconds": round(duration, 2),
+            "model_name": resolved_name,
             "stdout": result.stdout,
             "stderr": result.stderr,
         }
