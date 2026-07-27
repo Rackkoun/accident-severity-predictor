@@ -194,16 +194,16 @@ docker run --rm -v ${PWD}/data:/app/data -v ${PWD}/artifacts:/app/artifacts asp-
 
 ## 🛠️ Pipeline Automation & Docker
 
-We use a plattform-independent `Makefile` to automate the local environment setup, container execution, and data/model tracking.
+We use a platform-independent `Makefile` to automate the local environment setup, container execution, and data/model tracking.
 
-To run the ML training pipeline inside the Docker container, you no longer need long manual commands. Simply make sure your Docker Daemon is running, build the image once, and use `make`:
+To spin up the FastAPI backend and prediction service inside the Docker container, simply make sure your Docker Daemon is running and use the following shortcuts:
 
 ```shell
-# Build the training image once (run in root directory):
-docker build -f services/training/Dockerfile.training -t asp-training:latest .
+# Build and start the backend service in the background:
+make run-backend
 
-# Run the training and evaluation inside the container:
-make train-model
+# Stop the backend service and free up the ports:
+make stop-backend
 ```
 
 ---
@@ -244,8 +244,14 @@ make dvc-pull
 
 We use a `dvc.yaml` pipeline to orchestrate the data and training steps. DVC automatically tracks your scripts, data splits, and model artifacts. It will intelligently skip steps if no code or data has changed.
 
-To execute the entire training pipeline, track the new artifacts, and push them to DagsHub, run:
+To execute the entire training pipeline, track the new artifacts, and push them to DagsHub, you can use our automated Makefile shortcut:
 
+```bash
+# Runs 'dvc repro' to build the pipeline and automatically executes 'dvc push' to DagsHub S3
+make run-pipeline
+```
+
+*Alternatively, you can run the DVC commands manually:*
 ```bash
 # Run the pipeline locally (DVC tracks dependencies and outputs automatically)
 uv run dvc repro
@@ -255,7 +261,6 @@ uv run dvc push
 ```
 
 *Note: DVC automatically protects the heavy binaries (`data/` and `artifacts/models/`), ensuring they are never accidentally committed to Git, while code and lightweight configurations are managed via Git.*
-
 
 ### 🔄 Automated CI/CD Execution (No Manual Action Required)
 

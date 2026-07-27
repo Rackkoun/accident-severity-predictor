@@ -9,23 +9,19 @@ init-project:
 dvc-pull:
 	uv run dvc pull
 
-# 3. Start the model training inside the Docker container (via Docker Compose)
-train-model:
-	docker compose run --rm training
-
-# 4. Push new pipeline states directly to DagsHub
-dvc-push:
-	uv run dvc push
-
-# 5. Execute the entire end-to-end ML pipeline locally (using dvc.yaml)
-run-pipeline:
-	uv run dvc repro
-	uv run dvc push
-
-# 6. Start the FastAPI Predict-API in the background
+# 3. start backend
 run-backend:
 	docker compose up -d --build backend
 
-# 7. Stop the FastAPI Predict-API
+# 4. stopp backend
 stop-backend:
 	docker compose down
+
+# 5. DVC Push
+dvc-push:
+	uv run dvc push
+
+# 6. Execute the entire end-to-end ML pipeline locally (using dvc.yaml)
+run-pipeline:
+	uv run dvc repro
+	uv run dvc push
