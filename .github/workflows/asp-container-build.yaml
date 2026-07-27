@@ -3,9 +3,9 @@ name: 🐳 ASP Container Build & Smoke Tes
 on:
   workflow_call:
     secrets:
-      DAGSHUB_USERNAME:
+      AWS_ACCESS_KEY_ID:
         required: true
-      DAGSHUB_TOKEN:
+      AWS_SECRET_ACCESS_KEY:
         required: true
 
 jobs:
@@ -35,10 +35,10 @@ jobs:
           version: "latest"
 
       - name: 🚚 Pull ML Model from DagsHub (S3)
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
-          uv run dvc remote modify origin url s3://dvc.dagshub.com/Rackkoun/accident-severity-predictor
-          uv run dvc remote modify origin access_key_id ${{ secrets.DAGSHUB_USERNAME }}
-          uv run dvc remote modify origin secret_access_key ${{ secrets.DAGSHUB_TOKEN }}
           uv run dvc pull
 
       - name: Set up Docker Buildx
