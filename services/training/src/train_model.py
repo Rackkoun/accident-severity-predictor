@@ -18,9 +18,25 @@ logger = get_logger(__name__)
 
 
 def _generate_model_name(base_name: str) -> str:
-    """generate a timestamped model name."""
+    """generate a timestamped model name: model -> model_20260722125017"""
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     return f"{base_name}_{timestamp}"
+
+
+def _resolve_base_model_name(model_name: str, model_dir: Path) -> str:
+    """
+    if model_name is a full timestamped name (e.g. model_20260722125017),
+    extract the base name. If no models exist, use model_name as-is.
+    """
+    # ff model_name contains underscore, it might be timestamped
+    if "_" in model_name:
+        # check if it's an existing model file
+        existing = model_dir / f"{model_name}.joblib"
+        if existing.exists():
+            # extract base name (everything before last underscore)
+            return model_name.rsplit("_", 1)[0]
+
+    return model_name
 
 
 def run_training(
@@ -31,9 +47,10 @@ def run_training(
     model_parameters: dict,
     top_n_features: int = 20,
 ) -> RandomForestClassifier:
-    """train the RandomForest (params from the notebook benchmark) and save artifacts. Return the model."""
+    """train RandomForest and save artifacts."""
 
     processed_data_dir = Path(processed_data_dir)
+    model_out_dir = Path(model_out_dir)
 
     logger.info("Loading processed training dataset...")
     X_train = load_processed_csv(processed_data_dir / "X_train.csv")
@@ -44,11 +61,12 @@ def run_training(
     logger.info("Training RandomForest model...")
     model.fit(X_train, y_train)
 
-    # Auto-versioning: if model.joblib exists, use model_timestamp.joblib
-    final_model_name = _generate_model_name(model_name)
-    logger.info(f"Base model '{model_name}' exists. Saving as '{final_model_name}' instead.")
+    # resolve base name (handle timestamped input names)
+    base_name = _resolve_base_model_name(model_name, model_out_dir)
+    final_model_name = _generate_model_name(base_name)
 
-    logger.info("Saving model artifacts...")
+    logger.info(f"Saving model as '{final_model_name}' (base: {base_name})")
+
     save_model_artifacts(
         model=model,
         features=list(X_train.columns),

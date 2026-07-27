@@ -9,13 +9,14 @@ dependencies = []
 [dependency-groups]
 backend = [
     "fastapi>=0.139.0",
+    "httpx2>=2.9.0",
     "pydantic>=2.13.4",
     "pydantic-settings>=2.14.2",
     "requests>=2.34.2",
     "uvicorn>=0.51.0",
 ]
 dev = [
-    "dvc>=3.67.1",
+    "dvc[s3]>=3.67.1",
     "ipykernel>=7.3.0",
     "jupyterlab>=4.6.1",
     "mypy>=2.2.0",
@@ -107,7 +108,7 @@ warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
 strict_equality = true
-# solve: error: Source file found twice under different module names: 
+# solve: error: Source file found twice under different module names:
 # "asp_logging" and "common.utils.asp_logging"
 explicit_package_bases = true          # avoid conflict name with python packages
 exclude = [                             # exclure non-source dirs
@@ -128,8 +129,9 @@ ignore_missing_imports = true
 # relax strict typing tests
 [[tool.mypy.overrides]]
 module = [
-    "common.tests.*", 
-    "services.training.tests.*"
+    "common.tests.*",
+    "services.training.tests.*",
+    "services.backend.tests.*",
 ]
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
@@ -138,8 +140,9 @@ check_untyped_defs = false
 # pytest + coverage
 [tool.pytest.ini_options]
 testpaths = [
-    "common/tests", 
+    "common/tests",
     "services/training/tests",
+    "services/backend/tests",
 ]
 pythonpath = ["."]
 addopts = [

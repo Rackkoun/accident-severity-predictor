@@ -1,24 +1,20 @@
-name: ASP CI
+name: 🚀 Accident Severity Predictor (ASP) CI
 
 on:
   push:
-    branches:
-      - main
-      - develop
+    branches: [main, develop]
 
   pull_request:
-    branches:
-      - main
-      - develop
+    branches: [main, develop]
 
 jobs:
-  lint:
-    uses: ./.github/workflows/asp-lint.yaml
+  code-quality:
+    uses: ./.github/workflows/asp-code-quality.yaml
 
-  tests:
-    needs: lint
-    uses: ./.github/workflows/asp-tests.yaml
-  
-  docker:
-    needs: tests
-    uses: ./.github/workflows/asp-docker.yaml
+  test-suite:
+    needs: code-quality
+    uses: ./.github/workflows/asp-test-suite.yaml
+
+  container-build:
+    needs: test-suite
+    uses: ./.github/workflows/asp-container-build.yaml

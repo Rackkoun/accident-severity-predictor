@@ -1,0 +1,73 @@
+schema: '2.0'
+stages:
+  download_data:
+    cmd: uv run python -m common.data.download_data
+    deps:
+    - path: common/data/download_data.py
+      hash: md5
+      md5: 19eaf2c56b9646349559731e386ab827
+      size: 2150
+    - path: common/utils/paths.py
+      hash: md5
+      md5: c9c80ce094c062b80b4b1dc1f56682c8
+      size: 1579
+    outs:
+    - path: data/raw/
+      hash: md5
+      md5: 7a5dd7dd0e8cb18a912c5e37ae281547.dir
+      size: 131546316
+      nfiles: 16
+  make_dataset:
+    cmd: mkdir -p data/processed && uv run python -m common.data.make_dataset
+    deps:
+    - path: common/data/make_dataset.py
+      hash: md5
+      md5: 373667133922f2ff1292640471d9e195
+      size: 4115
+    - path: common/utils/paths.py
+      hash: md5
+      md5: c9c80ce094c062b80b4b1dc1f56682c8
+      size: 1579
+    - path: data/raw/
+      hash: md5
+      md5: 7a5dd7dd0e8cb18a912c5e37ae281547.dir
+      size: 131546316
+      nfiles: 16
+    outs:
+    - path: data/processed/
+      hash: md5
+      md5: 0098bfadb8eced7fbca720ce6a8aff12.dir
+      size: 145286355
+      nfiles: 4
+  train:
+    cmd: uv run python -m services.training.train
+    deps:
+    - path: common/utils/paths.py
+      hash: md5
+      md5: c9c80ce094c062b80b4b1dc1f56682c8
+      size: 1579
+    - path: data/processed/
+      hash: md5
+      md5: 0098bfadb8eced7fbca720ce6a8aff12.dir
+      size: 145286355
+      nfiles: 4
+    - path: services/training/train.py
+      hash: md5
+      md5: 13a12c29b4fbb34eeab17c9ec1998c8b
+      size: 895
+    outs:
+    - path: artifacts/metrics/
+      hash: md5
+      md5: 3c26199adf9acfa77a2a15732ca6aee3.dir
+      size: 1092
+      nfiles: 6
+    - path: artifacts/models/
+      hash: md5
+      md5: 3aca35f37f5c082815735b2c1c970607.dir
+      size: 6002236167
+      nfiles: 21
+    - path: artifacts/reports/
+      hash: md5
+      md5: 280725f2d88622e5196e33139a8083a8.dir
+      size: 1015529
+      nfiles: 13
