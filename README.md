@@ -218,12 +218,6 @@ If you have just cloned or pulled this branch, synchronize your environment once
 ```bash
 make init-project
 ```
-
-Next, configure your personal DagsHub credentials to unlock the shared remote storage (do **not** commit these, they stay private on your machine):
-```bash
-uv run dvc remote modify origin --local access_key_id <YOUR_DAGSHUB_USERNAME>
-uv run dvc remote modify origin --local secret_access_key <YOUR_DAGSHUB_TOKEN>
-```
 ### 2. Configure Personal DagsHub Credentials (Mandatory)
 
 > ⚠️ **IMPORTANT:** To allow DVC to pull or push data, you must configure your personal DagsHub credentials **once per machine**. Never commit these credentials to Git!
@@ -232,7 +226,7 @@ uv run dvc remote modify origin --local secret_access_key <YOUR_DAGSHUB_TOKEN>
 2. Run the copied commands in your terminal. It should look like this:
 
 ```bash
-v run dvc remote modify origin --local access_key_id <YOUR_ACCESS_KEY_ID>
+uv run dvc remote modify origin --local access_key_id <YOUR_ACCESS_KEY_ID>
 uv run dvc remote modify origin --local secret_access_key <YOUR_SECRET_ACCESS_KEY>
 ```
 
