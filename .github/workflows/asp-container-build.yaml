@@ -2,6 +2,11 @@ name: 🐳 ASP Container Build & Smoke Tes
 
 on:
   workflow_call:
+    secrets:
+      DAGSHUB_USERNAME:
+        required: true
+      DAGSHUB_TOKEN:
+        required: true
 
 jobs:
   build:
