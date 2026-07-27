@@ -18,3 +18,6 @@ jobs:
   container-build:
     needs: test-suite
     uses: ./.github/workflows/asp-container-build.yaml
+    secrets:
+      DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
+      DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}

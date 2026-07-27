@@ -24,6 +24,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: 📦 Setup Python, UV and DVC Pull
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - name: 🚚 Pull ML Model from DagsHub (S3)
+        run: |
+          uv run dvc remote modify origin url s3://://dagshub.com{{ github.repository }}
+          uv run dvc remote modify origin access_key_id ${{ secrets.DAGSHUB_USERNAME }}
+          uv run dvc remote modify origin secret_access_key ${{ secrets.DAGSHUB_TOKEN }}
+          uv run dvc pull
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
