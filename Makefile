@@ -1,7 +1,5 @@
-.PHONY: init-project train-model dvc-push run-pipeline
+.PHONY: init-project dvc-pull train-model dvc-push run-pipeline run-backend stop-backend
 
-# Detect the project root directory universally across Mac, Linux, and Windows
-ROOT_DIR := $(shell git rev-parse --show-toplevel)
 
 # 1. Run this once after cloning or pulling to install all dependencies locally
 init-project:
@@ -11,21 +9,23 @@ init-project:
 dvc-pull:
 	uv run dvc pull
 
-
-# 3. Start the model training inside the Docker container
+# 3. Start the model training inside the Docker container (via Docker Compose)
 train-model:
-	docker run --rm \
-		-v "$(ROOT_DIR)/data:/app/data" \
-		-v "$(ROOT_DIR)/artifacts:/app/artifacts" \
-		asp-training
+	docker compose run --rm training
 
-# 4. Track new data/model states and push them to DagsHub
+# 4. Push new pipeline states directly to DagsHub
 dvc-push:
-	uv run dvc add data
-	uv run dvc add artifacts/models
-	uv run dvc add artifacts/metrics
-	uv run dvc add artifacts/reports
-	uv run dvc push -r origin
+	uv run dvc push
 
-# 5. Execute the entire end-to-end ML pipeline
-run-pipeline: train-model dvc-push
+# 5. Execute the entire end-to-end ML pipeline locally (using dvc.yaml)
+run-pipeline:
+	uv run dvc repro
+	uv run dvc push
+
+# 6. Start the FastAPI Predict-API in the background
+run-backend:
+	docker compose up -d --build backend
+
+# 7. Stop the FastAPI Predict-API
+stop-backend:
+	docker compose down
