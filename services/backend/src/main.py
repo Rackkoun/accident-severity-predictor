@@ -20,8 +20,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[Any]:
     """load latest model on startup if available."""
     try:
         load_latest_model()
-    except Exception:
-        logger.warning("No model available at startup. Use /api/v1/train to train one.")
+    except Exception as e:
+        logger.exception(f"Unable to load model at startup: {e}")
     yield
     logger.info("Shutting down backend...")
 

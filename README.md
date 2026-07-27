@@ -156,7 +156,7 @@ Categories:
 ## Basic pipeline
 
 **Download raw data for a specific year**:
-1. Set `YEAR` variable in the script `./common/data/download_raw_data.py`
+1. Set `YEAR` variable in the script `./common/data/download_data.py`
 2. Run
     ```
     python -m common.data.download_data
@@ -189,6 +189,87 @@ docker run --rm -v $(pwd)/data:/app/data -v $(pwd)/artifacts:/app/artifacts asp-
 docker run --rm -v ${PWD}/data:/app/data -v ${PWD}/artifacts:/app/artifacts asp-training
 ```
 
+
+---
+
+## 🛠️ Pipeline Automation & Docker
+
+We use a platform-independent `Makefile` to automate the local environment setup, container execution, and data/model tracking.
+
+To spin up the FastAPI backend and prediction service inside the Docker container, simply make sure your Docker Daemon is running and use the following shortcuts:
+
+```shell
+# Build and start the backend service in the background:
+make run-backend
+
+# Stop the backend service and free up the ports:
+make stop-backend
+```
+
+---
+
+## 📦 Data & Model Versioning (DVC)
+
+We use **DVC (Data Version Control)** combined with **DagsHub** to version control our large datasets and heavy `.joblib` models.
+
+### 1. Setup & Credentials (Once per Machine)
+
+If you have just cloned or pulled this branch, synchronize your environment once to ensure DVC is installed locally:
+```bash
+make init-project
+```
+### 2. Configure Personal DagsHub Credentials (Mandatory)
+
+> ⚠️ **IMPORTANT:** To allow DVC to pull or push data, you must configure your personal DagsHub credentials **once per machine**. Never commit these credentials to Git!
+
+1. Go to **DagsHub.com** to the repo ➡️ click on **data** (green button, top right) ➡️ go to **Setup S3 credentials** ➡️ **Copy commands** (make sure to click on the eye to see the keys before copying).
+2. Run the copied commands in your terminal. It should look like this:
+
+```bash
+uv run dvc remote modify origin --local access_key_id <YOUR_ACCESS_KEY_ID>
+uv run dvc remote modify origin --local secret_access_key <YOUR_SECRET_ACCESS_KEY>
+```
+
+*Note: The `--local` flag ensures that your credentials are saved in `.dvc/config.local`, which is strictly ignored by Git and stays safely on your machine.*
+
+### 3. Fetching Existing Data & Models from the Cloud
+
+If you freshly cloned the repository or switched to this branch, the datasets and models will be missing locally. To pull the exact versions belonging to the current code state from DagsHub, simply run:
+
+```bash
+make dvc-pull
+```
+
+### 4. Run the End-to-End Automated Pipeline (DVC Pipeline)
+
+We use a `dvc.yaml` pipeline to orchestrate the data and training steps. DVC automatically tracks your scripts, data splits, and model artifacts. It will intelligently skip steps if no code or data has changed.
+
+To execute the entire training pipeline, track the new artifacts, and push them to DagsHub, you can use our automated Makefile shortcut:
+
+```bash
+# Runs 'dvc repro' to build the pipeline and automatically executes 'dvc push' to DagsHub S3
+make run-pipeline
+```
+
+*Alternatively, you can run the DVC commands manually:*
+```bash
+# Run the pipeline locally (DVC tracks dependencies and outputs automatically)
+uv run dvc repro
+
+# Push the newly generated data and models to DagsHub S3 storage
+uv run dvc push
+```
+
+*Note: DVC automatically protects the heavy binaries (`data/` and `artifacts/models/`), ensuring they are never accidentally committed to Git, while code and lightweight configurations are managed via Git.*
+
+### 🔄 Automated CI/CD Execution (No Manual Action Required)
+
+Thanks to our integrated **GitHub Actions CI/CD Pipeline**, you rarely need to run the training or deployment manually:
+
+* **Automatic Model Verification:** Every time you open a Pull Request, GitHub automatically spins up a runner, installs the environment via `uv`, pulls the latest model from DagsHub via S3, and verifies that the prediction service (`backend`) passes all integration and health checks.
+* **Continuous Training (CD):** Merging code into the main branches triggers the automated orchestration, ensuring that containers are rebuilt and validated without any local hardware dependency.
+
+***
 
 ---
 
