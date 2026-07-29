@@ -36,27 +36,27 @@ def main() -> None:
         if not (PROCESSED / name).is_file():
             fail(f"missing file: {name}")
 
-    X_train = pd.read_csv(PROCESSED / "X_train.csv")
-    X_test = pd.read_csv(PROCESSED / "X_test.csv")
+    x_train = pd.read_csv(PROCESSED / "X_train.csv")
+    x_test = pd.read_csv(PROCESSED / "X_test.csv")
     y_train = pd.read_csv(PROCESSED / "y_train.csv")
     y_test = pd.read_csv(PROCESSED / "y_test.csv")
 
     # 2) datasets must not be empty
-    if len(X_train) == 0 or len(X_test) == 0:
-        fail("X_train or X_test is empty")
+    if len(x_train) == 0 or len(x_test) == 0:
+        fail("x_train or x_test is empty")
 
     # 3) features and labels must have matching row counts
-    if len(X_train) != len(y_train):
-        fail(f"row mismatch: X_train={len(X_train)} vs y_train={len(y_train)}")
-    if len(X_test) != len(y_test):
-        fail(f"row mismatch: X_test={len(X_test)} vs y_test={len(y_test)}")
+    if len(x_train) != len(y_train):
+        fail(f"row mismatch: x_train={len(x_train)} vs y_train={len(y_train)}")
+    if len(x_test) != len(y_test):
+        fail(f"row mismatch: x_test={len(x_test)} vs y_test={len(y_test)}")
 
     # 4) train and test must have the SAME feature columns, in the same order
-    if list(X_train.columns) != list(X_test.columns):
-        fail("X_train and X_test have different columns")
+    if list(x_train.columns) != list(x_test.columns):
+        fail("x_train and x_test have different columns")
 
     # 5) no feature column may be entirely null
-    all_null = X_train.columns[X_train.isna().all()].tolist()
+    all_null = x_train.columns[x_train.isna().all()].tolist()
     if all_null:
         fail(f"columns are entirely null: {all_null}")
 
@@ -65,11 +65,7 @@ def main() -> None:
     if not target_values.issubset({0, 1}):
         fail(f"unexpected target values (expected 0/1): {sorted(target_values)}")
 
-    print(
-        "[VALIDATION] PASS: "
-        f"X_train={X_train.shape}, X_test={X_test.shape}, "
-        f"features={X_train.shape[1]}, target_classes={sorted(target_values)}"
-    )
+    print(f"[VALIDATION] PASS: x_train={x_train.shape}, x_test={x_test.shape}, features={x_train.shape[1]}, target_classes={sorted(target_values)}")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-# airflow/docker-compose.airflow.yaml
+# infra/airflow/docker-compose.airflow.yml
 #
 # Standalone Apache Airflow for the ASP project.
 # Runs COMPLETELY INDEPENDENTLY of the main project's docker-compose.yaml —
@@ -8,12 +8,12 @@
 # possible Airflow to read and learn from. It launches the project's existing
 # images as sibling containers through the mounted host Docker socket.
 #
-# Usage (from the airflow/ folder):
+# Usage (from the infra/airflow/ folder):
 #   cp .env.example .env         # then edit HOST_PROJECT_ROOT
-#   docker compose -f docker-compose.airflow.yaml up -d --build
-#   docker compose -f docker-compose.airflow.yaml logs -f airflow   # find the admin password
+#   docker compose -f docker-compose.airflow.yml up -d --build
+#   docker compose -f docker-compose.airflow.yml logs -f airflow   # find the admin password
 #   # open http://localhost:8080
-#   docker compose -f docker-compose.airflow.yaml down
+#   docker compose -f docker-compose.airflow.yml down
 
 services:
   airflow:
@@ -42,6 +42,7 @@ services:
       FASTAPI_RELOAD_URL: ${FASTAPI_RELOAD_URL:-}
     volumes:
       - ./dags:/opt/airflow/dags                   # your DAG(s)
+      - ./plugins:/opt/airflow/plugins             # Airflow plugins (empty for now)
       - /var/run/docker.sock:/var/run/docker.sock  # lets DockerOperator talk to the host daemon
     # Linux only: give Airflow's user access to the docker socket.
     # On Docker Desktop (Windows/macOS) this is usually not needed and is harmless.

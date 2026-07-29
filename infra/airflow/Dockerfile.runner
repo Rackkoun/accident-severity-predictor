@@ -1,4 +1,4 @@
-# airflow/Dockerfile.runner
+# infra/airflow/Dockerfile.runner
 # A small, standalone helper image for two DAG tasks that the app images can't do:
 #   - version_dataset_dvc : needs the `dvc` CLI (not installed in the app images)
 #   - validate_data       : needs `pandas` to read + check the processed dataset
@@ -7,7 +7,7 @@
 # bind-mounts the repo / data into it at run time.
 #
 # Build (from the repo root):
-#   docker build -f airflow/Dockerfile.runner -t asp-airflow-runner:latest airflow
+#   docker build -f infra/airflow/Dockerfile.runner -t asp-airflow-runner:latest infra/airflow
 
 FROM python:3.12-slim
 

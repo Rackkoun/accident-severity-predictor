@@ -19,9 +19,9 @@ Why two different images?
     asp-training:latest.
 This lets us reuse the images AS-IS, with zero edits to their Dockerfiles.
 
-Prerequisites (see airflow/README.md):
+Prerequisites (see infra/airflow/README.md):
   1. Build asp-backend:latest and asp-training:latest first (main project, Phase 5).
-  2. Set HOST_PROJECT_ROOT in airflow/.env to the ABSOLUTE host path of the repo.
+  2. Set HOST_PROJECT_ROOT in infra/airflow/.env to the ABSOLUTE host path of the repo.
 
 Because `download_data` re-fetches the raw CSVs from data.gouv.fr, this DAG can
 rebuild the whole pipeline from scratch — no `dvc pull` required.
@@ -37,15 +37,13 @@ from airflow.providers.docker.operators.docker import DockerOperator
 from docker.types import Mount
 
 # ---------------------------------------------------------------------------
-# Configuration (read from environment; see airflow/.env)
+# Configuration (read from environment; see infra/airflow/.env)
 # ---------------------------------------------------------------------------
 
 # Absolute path to the project ON THE HOST (NOT inside this Airflow container).
 # The host Docker daemon resolves bind-mount sources, so these MUST be host paths.
 # Windows example: C:/Users/you/Documents/GitHub/accident-severity-predictor
-HOST_PROJECT_ROOT = os.environ.get(
-    "HOST_PROJECT_ROOT", "/absolute/path/to/accident-severity-predictor"
-)
+HOST_PROJECT_ROOT = os.environ.get("HOST_PROJECT_ROOT", "/absolute/path/to/accident-severity-predictor")
 
 BACKEND_IMAGE = os.environ.get("ASP_BACKEND_IMAGE", "asp-backend:latest")
 TRAINING_IMAGE = os.environ.get("ASP_TRAINING_IMAGE", "asp-training:latest")
@@ -66,14 +64,14 @@ COMMON_DOCKER_ARGS = dict(
     api_version="auto",
     docker_url="unix://var/run/docker.sock",  # the mounted host socket
     mounts=COMMON_MOUNTS,
-    mount_tmp_dir=False,     # don't mount Airflow's temp dir (not needed here)
-    auto_remove="success",   # remove the sibling container when it finishes OK
-    network_mode="bridge",   # gives download_data internet access to data.gouv.fr
+    mount_tmp_dir=False,  # don't mount Airflow's temp dir (not needed here)
+    auto_remove="success",  # remove the sibling container when it finishes OK
+    network_mode="bridge",  # gives download_data internet access to data.gouv.fr
 )
 
 default_args = {
     "owner": "asp-team",
-    "retries": 0,            # keep it simple for learning; bump later if you like
+    "retries": 0,  # keep it simple for learning; bump later if you like
 }
 
 # ---------------------------------------------------------------------------
@@ -84,15 +82,14 @@ with DAG(
     description="Run the ASP DVC pipeline (download -> make_dataset -> train+evaluate) via Docker.",
     default_args=default_args,
     start_date=datetime(2024, 1, 1),
-    schedule=None,           # manual trigger only (set a cron string to run on a schedule)
+    schedule=None,  # manual trigger only (set a cron string to run on a schedule)
     catchup=False,
     tags=["asp", "mlops", "pipeline"],
 ) as dag:
-
     # 1) Download the raw BAAC CSVs from data.gouv.fr into data/raw/.
     download_data = DockerOperator(
         task_id="download_data",
-        image=BACKEND_IMAGE,                        # needs `requests` (backend group)
+        image=BACKEND_IMAGE,  # needs `requests` (backend group)
         entrypoint=[VENV_PYTHON],
         command=["-m", "common.data.download_data"],
         **COMMON_DOCKER_ARGS,
@@ -114,11 +111,6 @@ with DAG(
         image=TRAINING_IMAGE,
         entrypoint=[VENV_PYTHON],
         command=["-m", "services.training.train"],
-        # --- MLflow hook (teammate) -------------------------------------------
-        # A future task can log this run's params/metrics/model to MLflow here
-        # (or the training step itself can be wrapped). Left intentionally
-        # unimplemented — MLflow is out of scope for the Airflow feature branch.
-        # ----------------------------------------------------------------------
         **COMMON_DOCKER_ARGS,
     )
 

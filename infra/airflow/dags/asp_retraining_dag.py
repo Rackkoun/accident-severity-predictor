@@ -22,9 +22,9 @@ NOTE on ordering: your spec lists version(2) before validate(3). We intentionall
 `validate_data` BEFORE `version_dataset_dvc` so we never version a dataset that failed
 QA. Swap the two lines at the bottom if you must match the exact spec order.
 
-Prereqs (see airflow/README.md):
+Prereqs (see infra/airflow/README.md):
   - Build images: asp-backend:latest, asp-training:latest, asp-airflow-runner:latest
-  - Set HOST_PROJECT_ROOT (+ optional AWS_* DagsHub creds, FASTAPI_RELOAD_URL) in airflow/.env
+  - Set HOST_PROJECT_ROOT (+ optional AWS_* DagsHub creds, FASTAPI_RELOAD_URL) in infra/airflow/.env
 """
 
 from __future__ import annotations
@@ -41,7 +41,7 @@ from docker.types import Mount
 log = logging.getLogger("airflow.task")
 
 # ---------------------------------------------------------------------------
-# Configuration (from environment; see airflow/.env)
+# Configuration (from environment; see infra/airflow/.env)
 # ---------------------------------------------------------------------------
 HOST_PROJECT_ROOT = os.environ.get("HOST_PROJECT_ROOT", "/absolute/path/to/accident-severity-predictor")
 
@@ -49,7 +49,7 @@ BACKEND_IMAGE = os.environ.get("ASP_BACKEND_IMAGE", "asp-backend:latest")
 TRAINING_IMAGE = os.environ.get("ASP_TRAINING_IMAGE", "asp-training:latest")
 RUNNER_IMAGE = os.environ.get("ASP_RUNNER_IMAGE", "asp-airflow-runner:latest")
 
-VENV_PYTHON = "/app/.venv/bin/python"   # interpreter inside the asp-backend / asp-training images
+VENV_PYTHON = "/app/.venv/bin/python"  # interpreter inside the asp-backend / asp-training images
 
 # DagsHub S3 credentials for the DVC task (empty by default -> that task will fail loudly,
 # which is the correct signal that creds are missing).
@@ -105,7 +105,7 @@ def _reload_fastapi(**context) -> None:
     """STEP 7 — signal the running FastAPI backend to load the newly promoted model."""
     if not FASTAPI_RELOAD_URL:
         log.info("STEP 7 (placeholder): FASTAPI_RELOAD_URL not set.")
-        log.info("  -> backend owner: add a reload endpoint, then set FASTAPI_RELOAD_URL in airflow/.env.")
+        log.info("  -> backend owner: add a reload endpoint, then set FASTAPI_RELOAD_URL in infra/airflow/.env.")
         return
     try:
         import requests  # available in the Airflow image
@@ -139,17 +139,16 @@ with DAG(
     description="Full ASP retraining pipeline: ingest -> validate -> version -> train -> compare -> promote -> reload.",
     default_args=default_args,
     start_date=datetime(2024, 1, 1),
-    schedule=None,               # manual trigger; set a cron (e.g. "0 2 * * 1") to retrain weekly
+    schedule=None,  # manual trigger; set a cron (e.g. "0 2 * * 1") to retrain weekly
     catchup=False,
-    on_success_callback=_on_success,   # STEP 8
-    on_failure_callback=_on_failure,   # STEP 8
+    on_success_callback=_on_success,  # STEP 8
+    on_failure_callback=_on_failure,  # STEP 8
     tags=["asp", "mlops", "retraining"],
 ) as dag:
-
     # STEP 1 — check & ingest new yearly data (download raw CSVs from data.gouv.fr).
     check_and_ingest_data = DockerOperator(
         task_id="check_and_ingest_data",
-        image=BACKEND_IMAGE,                       # needs `requests` (backend group)
+        image=BACKEND_IMAGE,  # needs `requests` (backend group)
         entrypoint=[VENV_PYTHON],
         command=["-m", "common.data.download_data"],
         mounts=APP_MOUNTS,
@@ -174,7 +173,7 @@ with DAG(
         command=["/scripts/validate_data.py"],
         mounts=[
             Mount(source=f"{HOST_PROJECT_ROOT}/data", target="/data", type="bind"),
-            Mount(source=f"{HOST_PROJECT_ROOT}/airflow/scripts", target="/scripts", type="bind"),
+            Mount(source=f"{HOST_PROJECT_ROOT}/infra/airflow/scripts", target="/scripts", type="bind"),
         ],
         **DOCKER_COMMON,
     )
@@ -189,7 +188,7 @@ with DAG(
         working_dir="/repo",
         mounts=[Mount(source=HOST_PROJECT_ROOT, target="/repo", type="bind")],
         environment={
-            "AWS_ACCESS_KEY_ID": AWS_ACCESS_KEY_ID,          # DagsHub S3 creds
+            "AWS_ACCESS_KEY_ID": AWS_ACCESS_KEY_ID,  # DagsHub S3 creds
             "AWS_SECRET_ACCESS_KEY": AWS_SECRET_ACCESS_KEY,
         },
         **DOCKER_COMMON,

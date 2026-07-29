@@ -1,4 +1,4 @@
-# airflow/Dockerfile.airflow
+# infra/airflow/Dockerfile.airflow
 # Minimal Airflow image for the ASP project.
 # Starts from the official Airflow image and adds ONLY the Docker provider,
 # which gives us the DockerOperator used by the DAG to launch the project's
