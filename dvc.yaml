@@ -23,6 +23,7 @@ stages:
     deps:
       - services/training/train.py
       - common/utils/paths.py
+      - common/utils/mlflow.py
       - data/processed/
     outs:
       - artifacts/models/:

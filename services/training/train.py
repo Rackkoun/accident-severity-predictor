@@ -2,6 +2,9 @@
 training entrypoint
 """
 
+import mlflow
+
+from common.utils.mlflow import log_run, setup_mlflow
 from common.utils.paths import (
     METRIC_DIR,
     MODEL_CONFIG,
@@ -14,23 +17,30 @@ from services.training.src.train_model import run_training
 
 
 def main() -> None:
-    run_training(
-        processed_data_dir=PROCESSED_DATA_DIR,
-        model_out_dir=MODEL_DIR,
-        reports_dir=REPORT_DIR,
-        model_name=MODEL_CONFIG["model_name"],
-        model_parameters=MODEL_CONFIG["model_parameters"],
-        top_n_features=MODEL_CONFIG["top_n_features"],
-    )
 
-    # eval is used here for docker entrypoint
-    run_evaluation(
-        model_name=MODEL_CONFIG["model_name"],
-        processed_data_dir=PROCESSED_DATA_DIR,
-        model_dir=MODEL_DIR,
-        metrics_dir=METRIC_DIR,
-        reports_dir=REPORT_DIR,
-    )
+    setup_mlflow()
+
+    with mlflow.start_run():
+        train_out = run_training(
+            processed_data_dir=PROCESSED_DATA_DIR,
+            model_out_dir=MODEL_DIR,
+            reports_dir=REPORT_DIR,
+            model_name=MODEL_CONFIG["model_name"],
+            model_parameters=MODEL_CONFIG["model_parameters"],
+            top_n_features=MODEL_CONFIG["top_n_features"],
+        )
+
+        # eval is used here for docker entrypoint
+        eval_out = run_evaluation(
+            model_name=MODEL_CONFIG["model_name"],
+            processed_data_dir=PROCESSED_DATA_DIR,
+            model_dir=MODEL_DIR,
+            metrics_dir=METRIC_DIR,
+            reports_dir=REPORT_DIR,
+        )
+
+        # log run to mlflow
+        log_run(train_out, eval_out)
 
 
 if __name__ == "__main__":

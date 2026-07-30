@@ -46,7 +46,7 @@ def run_training(
     model_name: str,
     model_parameters: dict,
     top_n_features: int = 20,
-) -> RandomForestClassifier:
+) -> dict:
     """train RandomForest and save artifacts."""
 
     processed_data_dir = Path(processed_data_dir)
@@ -67,7 +67,7 @@ def run_training(
 
     logger.info(f"Saving model as '{final_model_name}' (base: {base_name})")
 
-    save_model_artifacts(
+    artifact_paths = save_model_artifacts(
         model=model,
         features=list(X_train.columns),
         model_parameters=model_parameters,
@@ -78,7 +78,12 @@ def run_training(
     )
 
     logger.info("Training completed.")
-    return model
+    return {
+        "model": model,
+        "model_name": final_model_name,
+        "parameters": model_parameters,
+        "artifacts": artifact_paths,
+    }
 
 
 def save_model_artifacts(

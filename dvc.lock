@@ -53,21 +53,21 @@ stages:
       nfiles: 4
     - path: services/training/train.py
       hash: md5
-      md5: 13a12c29b4fbb34eeab17c9ec1998c8b
-      size: 895
+      md5: 64bb959166cfaffe43ed5f9503e93baf
+      size: 1494
     outs:
     - path: artifacts/metrics/
       hash: md5
-      md5: 3c26199adf9acfa77a2a15732ca6aee3.dir
-      size: 1092
-      nfiles: 6
+      md5: 6e127b0946e4c434433007ed38ad8730.dir
+      size: 2534
+      nfiles: 16
     - path: artifacts/models/
       hash: md5
-      md5: 3aca35f37f5c082815735b2c1c970607.dir
-      size: 6002236167
-      nfiles: 21
+      md5: 770713164bd8485756f649f713972306.dir
+      size: 17135390885
+      nfiles: 60
     - path: artifacts/reports/
       hash: md5
-      md5: 280725f2d88622e5196e33139a8083a8.dir
-      size: 1015529
-      nfiles: 13
+      md5: 985c36ab21c84b2b06501e6b73e8c044.dir
+      size: 2861737
+      nfiles: 36

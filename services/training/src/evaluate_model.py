@@ -67,19 +67,18 @@ def run_evaluation(
     y_pred = model.predict(X_test)
 
     metrics = {
-        "Model": actual_model_name,
-        "Accuracy": accuracy_score(y_test, y_pred),
-        "Precision": precision_score(y_test, y_pred),
-        "Recall": recall_score(y_test, y_pred),
-        "F1 Score": f1_score(y_test, y_pred),
+        "accuracy": accuracy_score(y_test, y_pred),
+        "precision": precision_score(y_test, y_pred),
+        "recall": recall_score(y_test, y_pred),
+        "f1_score": f1_score(y_test, y_pred),
     }
 
     logger.info(
         "Evaluation completed | "
-        f"Accuracy={metrics['Accuracy']:.4f} | "
-        f"Precision={metrics['Precision']:.4f} | "
-        f"Recall={metrics['Recall']:.4f} | "
-        f"F1={metrics['F1 Score']:.4f}"
+        f"Accuracy={metrics['accuracy']:.4f} | "
+        f"Precision={metrics['precision']:.4f} | "
+        f"Recall={metrics['recall']:.4f} | "
+        f"F1={metrics['f1_score']:.4f}"
     )
 
     metrics_path = Path(metrics_dir) / f"{actual_model_name}_metrics.json"
@@ -106,4 +105,9 @@ def run_evaluation(
     plt.close(fig)
 
     logger.info("Evaluation completed.")
-    return metrics
+    return {
+        "metrics": metrics,
+        "artifacts": {
+            "confusion_matrix": confusion_matrix_path,
+        },
+    }

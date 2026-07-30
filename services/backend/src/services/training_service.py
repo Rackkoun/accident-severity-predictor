@@ -38,6 +38,8 @@ def _build_command(
         f"{host_artifacts_dir}:/app/artifacts",
         "-e",
         f"MODEL_NAME={model_name}",
+        "-e",
+        "DAGSHUB_USER_TOKEN",
         TRAINING_IMAGE,
     ]
 
