@@ -42,6 +42,10 @@ stages:
   train:
     cmd: uv run python -m services.training.train
     deps:
+    - path: common/utils/mlflow.py
+      hash: md5
+      md5: 3eaf4d157ab4e05dbcea0caf8daa410b
+      size: 1153
     - path: common/utils/paths.py
       hash: md5
       md5: c9c80ce094c062b80b4b1dc1f56682c8
@@ -53,21 +57,21 @@ stages:
       nfiles: 4
     - path: services/training/train.py
       hash: md5
-      md5: 64bb959166cfaffe43ed5f9503e93baf
-      size: 1494
+      md5: 1979476fb430ba535b2455c63e22910e
+      size: 1167
     outs:
     - path: artifacts/metrics/
       hash: md5
-      md5: 6e127b0946e4c434433007ed38ad8730.dir
-      size: 2534
-      nfiles: 16
+      md5: 5aa428a7c966f7252a57c4d1fe6ac6bc.dir
+      size: 145
+      nfiles: 1
     - path: artifacts/models/
       hash: md5
-      md5: 770713164bd8485756f649f713972306.dir
-      size: 17135390885
-      nfiles: 60
+      md5: a2f4e27f02259e03d422db94d26a3729.dir
+      size: 854809601
+      nfiles: 3
     - path: artifacts/reports/
       hash: md5
-      md5: 985c36ab21c84b2b06501e6b73e8c044.dir
-      size: 2861737
-      nfiles: 36
+      md5: f25fc9c69583ffdce9fbacda47f52610.dir
+      size: 3015407
+      nfiles: 38
