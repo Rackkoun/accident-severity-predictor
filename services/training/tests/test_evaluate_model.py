@@ -72,11 +72,16 @@ def test_latest_model_path_not_found(tmp_path: Path) -> None:
         _latest_model_path(tmp_path, "nonexistent")
 
 
-def test_eval_returns_metrics(eval_setup: tuple) -> None:
+def test_eval_returns_all(eval_setup: tuple) -> None:
     proc, m_dir, met_dir, rep_dir, name = eval_setup
-    metrics = run_evaluation(name, proc, m_dir, met_dir, rep_dir)
-    assert isinstance(metrics, dict)
-    assert "Accuracy" in metrics
+    eval_out = run_evaluation(name, proc, m_dir, met_dir, rep_dir)
+    assert isinstance(eval_out["metrics"], dict)
+    assert isinstance(eval_out["artifacts"], dict)
+    assert "accuracy" in eval_out["metrics"]
+    assert "precision" in eval_out["metrics"]
+    assert "recall" in eval_out["metrics"]
+    assert "f1_score" in eval_out["metrics"]
+    assert "confusion_matrix" in eval_out["artifacts"]
 
 
 def test_eval_saves_metrics_json(eval_setup: tuple) -> None:
@@ -93,11 +98,10 @@ def test_eval_saves_confusion_matrix(eval_setup: tuple) -> None:
 
 def test_eval_metrics_are_floats_0_to_1(eval_setup: tuple) -> None:
     proc, m_dir, met_dir, rep_dir, name = eval_setup
-    metrics = run_evaluation(name, proc, m_dir, met_dir, rep_dir)
-    for k, v in metrics.items():
-        if k != "Model":
-            assert isinstance(v, float)
-            assert 0 <= v <= 1
+    eval_out = run_evaluation(name, proc, m_dir, met_dir, rep_dir)
+    for v in eval_out["metrics"].values():
+        assert isinstance(v, float)
+        assert 0 <= v <= 1
 
 
 def test_eval_missing_model(eval_setup: tuple, tmp_path: Path) -> None:

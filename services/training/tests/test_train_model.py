@@ -37,15 +37,18 @@ def test_generate_model_name() -> None:
     assert len(name) > len("model_")
 
 
-def test_run_training_returns_model(training_data: Path, tmp_path: Path) -> None:
-    model = run_training(
+def test_run_training_returns_all(training_data: Path, tmp_path: Path) -> None:
+    train_out = run_training(
         processed_data_dir=training_data,
         model_out_dir=tmp_path / "models",
         reports_dir=tmp_path / "reports",
         model_name="test",
         model_parameters={"n_estimators": 10, "random_state": 42},
     )
-    assert isinstance(model, RandomForestClassifier)
+    assert isinstance(train_out["model"], RandomForestClassifier)
+    assert isinstance(train_out["model_name"], str)
+    assert isinstance(train_out["parameters"], dict)
+    assert isinstance(train_out["artifacts"], dict)
 
 
 def test_run_training_saves_artifacts(training_data: Path, tmp_path: Path) -> None:

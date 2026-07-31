@@ -16,7 +16,7 @@ def correct_id_anomaly(df: pd.DataFrame) -> pd.DataFrame:
 
 def clean_object_columns(df:pd.DataFrame) -> pd.DataFrame:
     """"get rid of non-breaking spaces"""
-    obj_cols = df.select_dtypes(include=["object", "str"]).columns
+    obj_cols = df.select_dtypes(include=[object, "string"]).columns
     df[obj_cols] = df[obj_cols].apply(
         lambda s: s.str.replace("\xa0", "", regex=False).str.strip()
     )
