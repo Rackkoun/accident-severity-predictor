@@ -83,6 +83,7 @@ def run_training(
         "model_name": final_model_name,
         "parameters": model_parameters,
         "artifacts": artifact_paths,
+        "input_example": X_train.iloc[:5],
     }
 
 
