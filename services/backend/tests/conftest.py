@@ -1,6 +1,4 @@
-"""
-Shared fixtures for backend tests
-"""
+"""Shared fixtures for backend tests."""
 
 from collections.abc import Iterator
 from unittest.mock import MagicMock
@@ -8,36 +6,41 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
+from services.backend.src.config.settings import Settings, get_settings
+from services.backend.src.core.auth import get_current_user
 from services.backend.src.main import app
+from services.backend.src.schemas.auth import UserCredentials
 from services.backend.src.services import prediction_service
 
 
 @pytest.fixture(autouse=True)
 def reset_cache() -> Iterator[None]:
-    """reset global model cache before every test to avoid state leakage."""
+    """Reset global model cache before every test."""
     prediction_service._model_cache.update({"model": None, "features": None, "name": None})
     yield
 
 
 @pytest.fixture
-def client() -> TestClient:
-    """FastAPI test client"""
-    return TestClient(app)
+def client() -> Iterator[TestClient]:
+    """FastAPI client with clean overrides."""
+    app.dependency_overrides.clear()
+    with TestClient(app) as test_client:
+        yield test_client
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture
 def mock_model() -> MagicMock:
-    """mocked sklearn model with predict/prodict_proba"""
+    """Mocked sklearn model."""
     model = MagicMock()
     model.predict.return_value = [1]
     model.predict_proba.return_value = [[0.3, 0.7]]
-
     return model
 
 
 @pytest.fixture
 def mock_features() -> list[str]:
-    """sample feature list matching the trained model."""
+    """Sample feature list."""
     return [
         "id_usager",
         "place",
@@ -73,20 +76,14 @@ def mock_features() -> list[str]:
 
 @pytest.fixture
 def loaded_model_cache(mock_model: MagicMock, mock_features: list[str]) -> Iterator[None]:
-    """Fixture that loads a mock model into the global cache."""
-    prediction_service._model_cache.update(
-        {
-            "model": mock_model,
-            "features": mock_features,
-            "name": "model_test",
-        }
-    )
+    """Load a mock model into the global cache."""
+    prediction_service._model_cache.update({"model": mock_model, "features": mock_features, "name": "model_test"})
     yield
 
 
 @pytest.fixture
 def valid_payload() -> dict:
-    """valid prediction request payload."""
+    """Valid prediction request payload."""
     return {
         "place": 1,
         "catu": 1,
@@ -121,7 +118,7 @@ def valid_payload() -> dict:
 
 @pytest.fixture
 def severe_payload() -> dict:
-    """payload simulating a severe accident (night, highway, bad weather)."""
+    """Payload simulating a severe accident."""
     return {
         "place": 10,
         "catu": 1,
@@ -156,16 +153,16 @@ def severe_payload() -> dict:
 
 @pytest.fixture
 def light_payload() -> dict:
-    """payload simulating a light accident (day, city, good weather, bike)."""
+    """Payload simulating a light accident."""
     return {
         "place": 1,
         "catu": 3,
         "sexe": 2,
         "secu1": 2,
-        "year_acc": 2025,
+        "year_acc": 2023,
         "victim_age": 25.0,
         "nb_victim": 1,
-        "catv": 1,
+        "catv": 2,
         "obsm": 0,
         "motor": 1,
         "nb_vehicles": 1,
@@ -178,7 +175,7 @@ def light_payload() -> dict:
         "mois": 6,
         "lum": 1,
         "dep": 75,
-        "com": 75056,
+        "com": 101,
         "agg": 2,
         "int": 1,
         "atm": 0,
@@ -187,3 +184,43 @@ def light_payload() -> dict:
         "long": 2.35,
         "hour": 14,
     }
+
+
+def _hash(password: str) -> str:
+    """Kept for compatibility but unused in simple auth."""
+    return password
+
+
+@pytest.fixture
+def fake_settings() -> Settings:
+    """Test settings with fake users."""
+    return Settings(
+        admin_password="admin_pwd",
+        user_password="user_pwd",
+    )
+
+
+@pytest.fixture
+def admin_user() -> UserCredentials:
+    return UserCredentials(username="admin", password="irrelevant", role="admin")
+
+
+@pytest.fixture
+def normal_user() -> UserCredentials:
+    return UserCredentials(username="datascientest", password="irrelevant", role="user")
+
+
+@pytest.fixture
+def override_admin(fake_settings: Settings, admin_user: UserCredentials) -> Iterator[None]:
+    app.dependency_overrides[get_settings] = lambda: fake_settings
+    app.dependency_overrides[get_current_user] = lambda: admin_user
+    yield
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def override_user(fake_settings: Settings, normal_user: UserCredentials) -> Iterator[None]:
+    app.dependency_overrides[get_settings] = lambda: fake_settings
+    app.dependency_overrides[get_current_user] = lambda: normal_user
+    yield
+    app.dependency_overrides.clear()

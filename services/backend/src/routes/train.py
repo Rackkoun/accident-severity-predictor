@@ -4,9 +4,13 @@ Backend training endpoint.
 Triggers the training container asynchronously via BackgroundTasks.
 """
 
-from fastapi import APIRouter, BackgroundTasks
+from typing import Annotated
+
+from fastapi import APIRouter, BackgroundTasks, Depends
 
 from common.utils.asp_logging import get_logger
+from services.backend.src.core.auth import require_admin
+from services.backend.src.schemas.auth import UserCredentials
 from services.backend.src.schemas.training import TrainRequest, TrainResponse
 from services.backend.src.services.prediction_service import load_latest_model
 from services.backend.src.services.training_service import run_training_container
@@ -20,6 +24,7 @@ router = APIRouter(prefix="/api/v1", tags=["Training"])
 def train(
     request: TrainRequest,
     background_tasks: BackgroundTasks,
+    current_user: Annotated[UserCredentials, Depends(require_admin)],
 ) -> TrainResponse:
     """
     Trigger model training in a background Docker container.
