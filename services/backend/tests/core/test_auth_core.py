@@ -44,6 +44,14 @@ class TestAuthenticateUser:
         result = authenticate_user("unknown", "pwd", settings)
         assert result is None
 
+    def test_user_success(self, fake_settings: Settings) -> None:
+        """test user role for authenticated user"""
+        result = authenticate_user("datascientest", "user_pwd", fake_settings)
+
+        assert result is not None
+        assert result.username == "datascientest"
+        assert result.role == "user"
+
 
 class TestCreateAccessToken:
     def test_token_contains_username_and_role(self, settings: Settings) -> None:
@@ -67,6 +75,12 @@ class TestGetCurrentUser:
         token = create_access_token(user, settings)
         with pytest.raises(HTTPException) as exc:
             get_current_user(token, settings)
+        assert exc.value.status_code == 401
+
+    def test_invalid_token_raises_401(self, fake_settings: Settings) -> None:
+        """Test that an invalid token raises a 401"""
+        with pytest.raises(HTTPException) as exc:
+            get_current_user("invalid_token", fake_settings)
         assert exc.value.status_code == 401
 
 

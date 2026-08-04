@@ -181,3 +181,50 @@ def test_model_status(loaded: bool, name: str | None, features: list[str] | None
     assert status["loaded"] is loaded
     assert status["name"] == name
     assert status["features_count"] == expected_count
+
+
+@patch("services.backend.src.services.prediction_service.joblib.load")
+@patch("services.backend.src.services.prediction_service.MODEL_DIR")
+def test_load_skips_when_cached(mock_dir: MagicMock, mock_load: MagicMock) -> None:
+    """model already cached, no need to load again."""
+
+    prediction_service._model_cache.update(
+        {
+            "model": MagicMock(),
+            "features": ["place"],
+            "name": "cached_model",
+        }
+    )
+
+    load_latest_model()
+
+    mock_dir.glob.assert_not_called()
+    mock_load.assert_not_called()
+    assert prediction_service._model_cache["name"] == "cached_model"
+
+
+@patch("services.backend.src.services.prediction_service.load_latest_model")
+def test_predict_triggers_lazy_load(
+    mock_lazy_load: MagicMock,
+    mock_model: MagicMock,
+    mock_features: list[str],
+    valid_payload: dict,
+) -> None:
+    """cache is empty"""
+
+    def side_effect():
+        prediction_service._model_cache.update(
+            {
+                "model": mock_model,
+                "features": mock_features,
+                "name": "lazy_loaded_model",
+            }
+        )
+
+    mock_lazy_load.side_effect = side_effect
+
+    request = PredictionRequest(**valid_payload)
+    result = predict_accident(request)
+
+    mock_lazy_load.assert_called_once()
+    assert result.model_used == "lazy_loaded_model"
