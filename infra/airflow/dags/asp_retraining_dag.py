@@ -72,6 +72,7 @@ DOCKER_COMMON = dict(
     mount_tmp_dir=False,
     auto_remove="success",
     network_mode="bridge",
+    dns=["8.8.8.8", "8.8.4.4"],  # <-- add: containers use public DNS
 )
 
 default_args = {
@@ -159,8 +160,10 @@ with DAG(
     build_dataset = DockerOperator(
         task_id="build_dataset",
         image=TRAINING_IMAGE,
-        entrypoint=[VENV_PYTHON],
-        command=["-m", "common.data.make_dataset"],
+        # mkdir mirrors the dvc.yaml stage (`mkdir -p data/processed && ...`); the host
+        # bind-mount shadows the dir the image created at build time, so create it here.
+        entrypoint=["/bin/sh", "-c"],
+        command=["mkdir -p /app/data/processed && /app/.venv/bin/python -m common.data.make_dataset"],
         mounts=APP_MOUNTS,
         **DOCKER_COMMON,
     )
@@ -201,7 +204,9 @@ with DAG(
         entrypoint=[VENV_PYTHON],
         command=["-m", "services.training.train"],
         mounts=APP_MOUNTS,
-        # --- MLflow hook (teammate): log this run's params/metrics/model to MLflow here. ---
+        # training calls dagshub.init() for MLflow -> pass the DagsHub token so it
+        # authenticates non-interactively (no browser/OAuth in a headless container).
+        environment={"DAGSHUB_USER_TOKEN": os.environ.get("DAGSHUB_USER_TOKEN", "")},
         **DOCKER_COMMON,
     )
 

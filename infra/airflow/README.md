@@ -32,7 +32,9 @@ are clearly-marked placeholders that succeed as no-ops until wired in:
 > The retraining DAG runs `validate_data` **before** `version_dataset_dvc` on purpose (don't
 > version data that failed QA). Swap those two lines in the DAG to match a strict 2-before-3 order.
 
-Full explanation: see `learning-guides/phase-8-airflow-orchestration.md`.
+Full explanation & a validated local-run playbook: see `infra/airflow/docs/phase-8-airflow-orchestration.md`
+(§8.9 lists the five issues a fresh Windows/Docker-Desktop run hits and their fixes) and
+`infra/airflow/docs/HOW-TO-VERIFY.md`.
 
 ---
 
@@ -118,12 +120,17 @@ fix it under `dags/`, and Airflow reloads it automatically within ~30s.
 
 | Symptom | Cause / Fix |
 |---------|-------------|
-| Task fails: `image not found` | Build the images first (see Prerequisites). |
+| **Build** fails: `groupadd: invalid group ID 'appuser'` (asp-training) | Windows: `UID`/`GID` unset and the training service has no default. Create a **root** `.env` with `UID=1000` / `GID=1000` before building (or `$env:UID="1000"; $env:GID="1000"`). |
+| `download_data` / `check_and_ingest_data` fails: `Failed to resolve 'www.data.gouv.fr'` | Container DNS can't resolve (corp net / Docker Desktop). Fixed in-code via `dns=["8.8.8.8","8.8.4.4"]` on every task; if `8.8.8.8` is blocked, use your own resolver. |
+| `make_dataset` fails: `Cannot save file into a non-existent directory: '/app/data/processed'` | Host bind-mount shadows the build-time dir. Fixed in-code: the task runs `mkdir -p /app/data/processed && …`. |
+| `train_evaluate` / `train_and_log_mlflow` fails: DagsHub OAuth `JSONDecodeError` | Training calls `dagshub.init()`; headless container can't OAuth. Set `DAGSHUB_USER_TOKEN` in `.env` (the DAG passes it through). |
+| Task fails: `image not found` | Build the images first (see Prerequisites) — incl. `asp-airflow-runner` for the retraining DAG. |
 | Task fails: `Cannot connect to the Docker daemon` | The socket mount or permissions. On Docker Desktop it usually just works; on Linux set `DOCKER_GID` in `.env` to `getent group docker \| cut -d: -f3`. |
 | Task fails: mount source path does not exist | `HOST_PROJECT_ROOT` in `.env` is wrong. Use the ABSOLUTE host path, forward slashes on Windows. |
 | `check_and_ingest_data` fails on `import requests` | It must use `asp-backend:latest` (has requests). Don't point it at the training image. |
-| `version_dataset_dvc` fails | Needs DagsHub creds — set `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` in `.env`. |
-| Can't find the admin password | `docker exec asp-airflow cat /opt/airflow/standalone_admin_password.txt` |
+| `version_dataset_dvc` fails / `403 Forbidden` | Needs DagsHub creds — set `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` (both = your DagsHub token) in `.env`. Verify success with `N files pushed` in the log + `dvc status -c`. |
+| `.env` change not taking effect | Env is injected at container start — re-run `docker compose -f docker-compose.airflow.yml up -d` to recreate the container. |
+| Can't find the admin password | `docker exec asp-airflow cat /opt/airflow/simple_auth_manager_passwords.json.generated` (older builds: `/opt/airflow/standalone_admin_password.txt`). User is `admin`. |
 | Port 8080 already in use | Change the left side of `"8080:8080"` in the compose file (e.g. `"8081:8080"`). |
 
 ---

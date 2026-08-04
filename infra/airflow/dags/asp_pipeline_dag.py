@@ -67,6 +67,7 @@ COMMON_DOCKER_ARGS = dict(
     mount_tmp_dir=False,  # don't mount Airflow's temp dir (not needed here)
     auto_remove="success",  # remove the sibling container when it finishes OK
     network_mode="bridge",  # gives download_data internet access to data.gouv.fr
+    dns=["8.8.8.8", "8.8.4.4"],  # <-- add: containers use public DNS
 )
 
 default_args = {
@@ -99,8 +100,10 @@ with DAG(
     make_dataset = DockerOperator(
         task_id="make_dataset",
         image=TRAINING_IMAGE,
-        entrypoint=[VENV_PYTHON],
-        command=["-m", "common.data.make_dataset"],
+        # mkdir mirrors the dvc.yaml stage (`mkdir -p data/processed && ...`); the host
+        # bind-mount shadows the dir the image created at build time, so create it here.
+        entrypoint=["/bin/sh", "-c"],
+        command=["mkdir -p /app/data/processed && /app/.venv/bin/python -m common.data.make_dataset"],
         **COMMON_DOCKER_ARGS,
     )
 
@@ -111,6 +114,9 @@ with DAG(
         image=TRAINING_IMAGE,
         entrypoint=[VENV_PYTHON],
         command=["-m", "services.training.train"],
+        # training now calls dagshub.init() for MLflow -> pass the DagsHub token so it
+        # authenticates non-interactively (no browser/OAuth in a headless container).
+        environment={"DAGSHUB_USER_TOKEN": os.environ.get("DAGSHUB_USER_TOKEN", "")},
         **COMMON_DOCKER_ARGS,
     )
 
