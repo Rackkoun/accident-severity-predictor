@@ -10,7 +10,7 @@ from fastapi import FastAPI
 
 from common.utils.asp_logging import get_logger
 from services.backend.src.routes import health, predict, train
-from services.backend.src.services.prediction_service import load_latest_model
+from services.backend.src.services.prediction_service import load_model
 
 logger = get_logger(__name__)
 
@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 async def lifespan(app: FastAPI) -> AsyncGenerator[Any]:
     """load latest model on startup if available."""
     try:
-        load_latest_model()
+        load_model()
     except Exception as e:
         logger.exception(f"Unable to load model at startup: {e}")
     yield

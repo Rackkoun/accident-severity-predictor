@@ -45,9 +45,19 @@ def main() -> None:
         )
 
         # mlflow: log run -> register model -> promote model if better
-        model_info = log_run(train_out, eval_out)
-        registered_version = register_model(model_info)
-        promote_if_better(registered_version, eval_out)
+        model_info = log_run(
+            train_out=train_out,
+            eval_out=eval_out,
+        )
+        registered_version = register_model(
+            model_info=model_info,
+            registry_model_name=MODEL_CONFIG["model_registry_name"],
+        )
+        promote_if_better(
+            registered_version=registered_version,
+            eval_out=eval_out,
+            registry_model_name=MODEL_CONFIG["model_registry_name"],
+        )
 
 
 if __name__ == "__main__":

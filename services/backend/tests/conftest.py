@@ -1,5 +1,5 @@
 """
-Shared fixtures for backend tests
+Shared fixtures for backend tests.
 """
 
 from collections.abc import Iterator
@@ -14,20 +14,30 @@ from services.backend.src.services import prediction_service
 
 @pytest.fixture(autouse=True)
 def reset_cache() -> Iterator[None]:
-    """reset global model cache before every test to avoid state leakage."""
-    prediction_service._model_cache.update({"model": None, "features": None, "name": None})
+    """Reset the global model cache before every test."""
+
+    prediction_service._model_cache.update(
+        {
+            "model": None,
+            "features": None,
+            "name": None,
+            "alias": None,
+        }
+    )
+
     yield
 
 
 @pytest.fixture
 def client() -> TestClient:
-    """FastAPI test client"""
+    """FastAPI test client."""
     return TestClient(app)
 
 
 @pytest.fixture
 def mock_model() -> MagicMock:
-    """mocked sklearn model with predict/prodict_proba"""
+    """Mock sklearn model supporting predict() and predict_proba()."""
+
     model = MagicMock()
     model.predict.return_value = [1]
     model.predict_proba.return_value = [[0.3, 0.7]]
@@ -37,7 +47,8 @@ def mock_model() -> MagicMock:
 
 @pytest.fixture
 def mock_features() -> list[str]:
-    """sample feature list matching the trained model."""
+    """Feature list matching the trained model."""
+
     return [
         "id_usager",
         "place",
@@ -72,21 +83,30 @@ def mock_features() -> list[str]:
 
 
 @pytest.fixture
-def loaded_model_cache(mock_model: MagicMock, mock_features: list[str]) -> Iterator[None]:
-    """Fixture that loads a mock model into the global cache."""
+def loaded_model_cache(
+    mock_model: MagicMock,
+    mock_features: list[str],
+) -> Iterator[None]:
+    """
+    Populate the in-memory model cache with a registered production model.
+    """
+
     prediction_service._model_cache.update(
         {
             "model": mock_model,
             "features": mock_features,
-            "name": "model_test",
+            "name": "accident-severity-predictor@production (v7)",
+            "alias": "production",
         }
     )
+
     yield
 
 
 @pytest.fixture
 def valid_payload() -> dict:
-    """valid prediction request payload."""
+    """Valid prediction request payload."""
+
     return {
         "place": 1,
         "catu": 1,
@@ -121,7 +141,8 @@ def valid_payload() -> dict:
 
 @pytest.fixture
 def severe_payload() -> dict:
-    """payload simulating a severe accident (night, highway, bad weather)."""
+    """Payload simulating a severe accident."""
+
     return {
         "place": 10,
         "catu": 1,
@@ -156,7 +177,8 @@ def severe_payload() -> dict:
 
 @pytest.fixture
 def light_payload() -> dict:
-    """payload simulating a light accident (day, city, good weather, bike)."""
+    """Payload simulating a light accident."""
+
     return {
         "place": 1,
         "catu": 3,
