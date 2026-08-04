@@ -48,6 +48,7 @@ DATA_PROCESSING_CONFIG: dict[str, Any] = {
 # model config
 MODEL_CONFIG: dict[str, Any] = {
     "model_name": "model",
+    "model_registry_name": "accident-severity-predictor",
     "model_parameters": {
         "random_state": 42,
         "n_estimators": 200,

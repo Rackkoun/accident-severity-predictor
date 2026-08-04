@@ -59,5 +59,10 @@ def test_model_config_has_name() -> None:
     assert len(MODEL_CONFIG["model_name"]) > 0
 
 
+def test_model_config_has_registry_name() -> None:
+    assert isinstance(MODEL_CONFIG["model_registry_name"], str)
+    assert len(MODEL_CONFIG["model_registry_name"]) > 0
+
+
 def test_model_config_top_n_positive() -> None:
     assert MODEL_CONFIG["top_n_features"] > 0

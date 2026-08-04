@@ -2,125 +2,153 @@
 Tests for prediction_service.
 """
 
-import json
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
 
 from services.backend.src.schemas.prediction import PredictionRequest
-
-# solve situation where latest model is not found in test cache
-# AssertionError: assert None == 'model_20260723000000'
-# access live model cache as 2nd approach since resetting cache has not worked
 from services.backend.src.services import prediction_service
 from services.backend.src.services.prediction_service import (
-    _latest_feature_path,
-    _latest_model_path,
-    # _model_cache,  # remove import model cache from the list
     get_model_status,
-    load_latest_model,
+    load_model,
     predict_accident,
 )
 
 
 @pytest.fixture(autouse=True)
 def reset_model_cache() -> None:
-    """ensure clean cache state for every test"""
-    prediction_service._model_cache.update({"model": None, "features": None, "name": None})
+    """Ensure a clean cache before every test."""
+
+    prediction_service._model_cache.update(
+        {
+            "model": None,
+            "features": None,
+            "name": None,
+            "alias": None,
+        }
+    )
 
 
-@patch("services.backend.src.services.prediction_service.MODEL_DIR")
-def test_latest_model_path_found(mock_dir: MagicMock) -> None:
-    """return the most recently modified model file."""
-
-    mock_old = MagicMock()
-    mock_old.stat.return_value.st_mtime = 1000
-    mock_old.name = "model_20260722000000.joblib"
-
-    mock_new = MagicMock()
-    mock_new.stat.return_value.st_mtime = 2000
-    mock_new.name = "model_20260723000000.joblib"
-
-    mock_dir.glob.return_value = [mock_old, mock_new]
-
-    result = _latest_model_path(mock_dir, "model")
-    assert result.name == "model_20260723000000.joblib"
+# ---------------------------------------------------------------------------
+# load_model
+# ---------------------------------------------------------------------------
 
 
-@patch("services.backend.src.services.prediction_service.MODEL_DIR")
-def test_latest_model_path_not_found(mock_dir: MagicMock) -> None:
-    """raise FileNotFoundError when no model exists."""
-
-    mock_dir.glob.return_value = []
-    with pytest.raises(FileNotFoundError, match="No trained model found"):
-        _latest_model_path(mock_dir, "model")
-
-
-@patch("services.backend.src.services.prediction_service.MODEL_DIR")
-def test_latest_feature_path_found(mock_dir: MagicMock) -> None:
-    """return the most recently modified features file."""
-
-    mock_old = MagicMock()
-    mock_old.stat.return_value.st_mtime = 1000
-    mock_old.name = "model_20260722000000_features.json"
-
-    mock_new = MagicMock()
-    mock_new.stat.return_value.st_mtime = 2000
-    mock_new.name = "model_20260723000000_features.json"
-
-    # ensure mocked glob return the mocked files
-    mock_dir.glob.return_value = [mock_old, mock_new]
-
-    result = _latest_feature_path(mock_dir, "model")
-    assert result.name == "model_20260723000000_features.json"
-
-
-@patch("services.backend.src.services.prediction_service.MODEL_DIR")
-def test_latest_feature_path_not_found(mock_dir: MagicMock) -> None:
-    """raise FileNotFoundError when no features file exists."""
-
-    mock_dir.glob.return_value = []
-
-    with pytest.raises(FileNotFoundError, match="No feature file found"):
-        _latest_feature_path(mock_dir, "model")
-
-
-@patch("services.backend.src.services.prediction_service.MODEL_DIR")
-def test_load_no_model(mock_dir: MagicMock) -> None:
-    """raise HTTPException(503) when no model is available."""
-    mock_dir.glob.return_value = []
-
-    with pytest.raises(HTTPException) as exc_info:
-        load_latest_model()
-
-    assert exc_info.value.status_code == 503
-    assert "No trained model available" in exc_info.value.detail
-
-
-@patch("services.backend.src.services.prediction_service.joblib.load")
-@patch("services.backend.src.services.prediction_service.MODEL_DIR")
-def test_load_success(mock_dir: MagicMock, mock_load: MagicMock) -> None:
-    """Successfully load model and features into cache."""
+@patch("services.backend.src.services.prediction_service.load_registered_model")
+@patch("services.backend.src.services.prediction_service.setup_mlflow")
+def test_load_model_success(
+    mock_setup_mlflow: MagicMock,
+    mock_load_registered_model: MagicMock,
+) -> None:
+    """Successfully load a registered model into the cache."""
 
     mock_model = MagicMock()
-    mock_model.stat.return_value.st_mtime = 1000
-    mock_model.stem = "model_20260723000000"
 
-    mock_feat = MagicMock()
-    mock_feat.stat.return_value.st_mtime = 1000
+    mock_load_registered_model.return_value = {
+        "model": mock_model,
+        "features": ["place", "catu"],
+        "version": "7",
+        "run_id": "run-123",
+    }
 
-    mock_dir.glob.side_effect = [
-        [mock_model],
-        [mock_feat],
+    load_model()
+
+    mock_setup_mlflow.assert_called_once()
+
+    mock_load_registered_model.assert_called_once_with(
+        registry_model_name="accident-severity-predictor",
+        alias="production",
+    )
+
+    assert prediction_service._model_cache["model"] is mock_model
+    assert prediction_service._model_cache["features"] == [
+        "place",
+        "catu",
     ]
-    mock_load.return_value = MagicMock()
+    assert prediction_service._model_cache["name"] == "accident-severity-predictor@production (v7)"
+    assert prediction_service._model_cache["alias"] == "production"
 
-    with patch("builtins.open", mock_open(read_data=json.dumps(["place", "catu"]))):
-        load_latest_model()
 
-    assert prediction_service._model_cache["name"] == "model_20260723000000"
-    assert prediction_service._model_cache["features"] == ["place", "catu"]
+@patch("services.backend.src.services.prediction_service.load_registered_model")
+@patch("services.backend.src.services.prediction_service.setup_mlflow")
+def test_load_model_skips_cached_model(
+    mock_setup_mlflow: MagicMock,
+    mock_load_registered_model: MagicMock,
+) -> None:
+    """Loading is skipped when the requested alias is already cached."""
+
+    prediction_service._model_cache.update(
+        {
+            "model": MagicMock(),
+            "features": ["place"],
+            "name": "cached",
+            "alias": "production",
+        }
+    )
+
+    load_model()
+
+    mock_setup_mlflow.assert_not_called()
+    mock_load_registered_model.assert_not_called()
+
+
+@patch("services.backend.src.services.prediction_service.load_registered_model")
+@patch("services.backend.src.services.prediction_service.setup_mlflow")
+def test_load_model_force_reload(
+    mock_setup_mlflow: MagicMock,
+    mock_load_registered_model: MagicMock,
+) -> None:
+    """force_reload=True ignores the cache."""
+
+    prediction_service._model_cache.update(
+        {
+            "model": MagicMock(),
+            "features": ["place"],
+            "name": "cached",
+            "alias": "production",
+        }
+    )
+
+    mock_load_registered_model.return_value = {
+        "model": MagicMock(),
+        "features": ["place"],
+        "version": "8",
+        "run_id": "run-456",
+    }
+
+    load_model(force_reload=True)
+
+    mock_setup_mlflow.assert_called_once()
+    mock_load_registered_model.assert_called_once()
+
+
+@patch("services.backend.src.services.prediction_service.load_registered_model")
+@patch("services.backend.src.services.prediction_service.setup_mlflow")
+def test_load_model_failure(
+    mock_setup_mlflow: MagicMock,
+    mock_load_registered_model: MagicMock,
+) -> None:
+    """Any loading failure is translated into HTTPException(503)."""
+
+    mock_load_registered_model.side_effect = RuntimeError("MLflow unavailable")
+
+    with pytest.raises(HTTPException) as exc_info:
+        load_model()
+
+    assert exc_info.value.status_code == 503
+
+    assert prediction_service._model_cache == {
+        "model": None,
+        "features": None,
+        "name": None,
+        "alias": None,
+    }
+
+
+# ---------------------------------------------------------------------------
+# predict_accident
+# ---------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
@@ -130,8 +158,8 @@ def test_load_success(mock_dir: MagicMock, mock_load: MagicMock) -> None:
         (0, [0.8, 0.2], "Unharmed / Lightly injured", 0, 0.8),
     ],
 )
+@pytest.mark.usefixtures("loaded_model_cache")
 def test_predict_severity(
-    loaded_model_cache: None,
     mock_model: MagicMock,
     valid_payload: dict,
     prediction: int,
@@ -140,22 +168,61 @@ def test_predict_severity(
     expected_code: int,
     expected_prob: float,
 ) -> None:
-    """predict severity codes map correctly to labels and probabilities."""
+    """Prediction output is mapped correctly."""
+
     mock_model.predict.return_value = [prediction]
     mock_model.predict_proba.return_value = [proba]
 
     request = PredictionRequest(**valid_payload)
+
     result = predict_accident(request)
 
     assert result.severity_code == expected_code
     assert result.severity == expected_severity
     assert result.probability == expected_prob
-    assert result.model_used == "model_test"
 
 
-def test_predict_feature_mismatch(loaded_model_cache: None, valid_payload: dict) -> None:
-    """raise HTTPException(422) when features don't match the model."""
-    prediction_service._model_cache["features"] = ["place", "catu", "sexe", "unknown_feature"]
+@patch("services.backend.src.services.prediction_service.load_model")
+def test_predict_lazy_load(
+    mock_load_model: MagicMock,
+    valid_payload: dict,
+) -> None:
+    """
+    predict_accident lazily loads a model when none is cached.
+    """
+
+    model = MagicMock()
+    model.predict.return_value = [0]
+    model.predict_proba.return_value = [[0.9, 0.1]]
+
+    mock_load_model.side_effect = lambda: prediction_service._model_cache.update(
+        {
+            "model": model,
+            "features": list(valid_payload.keys()),
+            "name": "loaded",
+            "alias": "production",
+        }
+    )
+
+    request = PredictionRequest(**valid_payload)
+
+    predict_accident(request)
+
+    mock_load_model.assert_called_once()
+
+
+@pytest.mark.usefixtures("loaded_model_cache")
+def test_predict_feature_mismatch(
+    valid_payload: dict,
+) -> None:
+    """A feature mismatch results in HTTPException(422)."""
+
+    prediction_service._model_cache["features"] = [
+        "place",
+        "catu",
+        "sexe",
+        "unknown_feature",
+    ]
 
     request = PredictionRequest(**valid_payload)
 
@@ -166,65 +233,45 @@ def test_predict_feature_mismatch(loaded_model_cache: None, valid_payload: dict)
     assert "Feature mismatch" in exc_info.value.detail
 
 
+# ---------------------------------------------------------------------------
+# get_model_status
+# ---------------------------------------------------------------------------
+
+
 @pytest.mark.parametrize(
-    ("loaded", "name", "features", "expected_count"),
+    ("loaded", "name", "alias", "features", "expected_count"),
     [
-        (False, None, None, 0),
-        (True, "model_2026", ["a", "b", "c"], 3),
+        (False, None, None, None, 0),
+        (
+            True,
+            "accident-severity-predictor@production (v7)",
+            "production",
+            ["a", "b", "c"],
+            3,
+        ),
     ],
 )
-def test_model_status(loaded: bool, name: str | None, features: list[str] | None, expected_count: int) -> None:
-    """status reflects current cache state."""
-
-    prediction_service._model_cache.update({"model": MagicMock() if loaded else None, "name": name, "features": features})
-    status = get_model_status()
-    assert status["loaded"] is loaded
-    assert status["name"] == name
-    assert status["features_count"] == expected_count
-
-
-@patch("services.backend.src.services.prediction_service.joblib.load")
-@patch("services.backend.src.services.prediction_service.MODEL_DIR")
-def test_load_skips_when_cached(mock_dir: MagicMock, mock_load: MagicMock) -> None:
-    """model already cached, no need to load again."""
+def test_model_status(
+    loaded: bool,
+    name: str | None,
+    alias: str | None,
+    features: list[str] | None,
+    expected_count: int,
+) -> None:
+    """Status reflects the current cache contents."""
 
     prediction_service._model_cache.update(
         {
-            "model": MagicMock(),
-            "features": ["place"],
-            "name": "cached_model",
+            "model": MagicMock() if loaded else None,
+            "name": name,
+            "alias": alias,
+            "features": features,
         }
     )
 
-    load_latest_model()
+    status = get_model_status()
 
-    mock_dir.glob.assert_not_called()
-    mock_load.assert_not_called()
-    assert prediction_service._model_cache["name"] == "cached_model"
-
-
-@patch("services.backend.src.services.prediction_service.load_latest_model")
-def test_predict_triggers_lazy_load(
-    mock_lazy_load: MagicMock,
-    mock_model: MagicMock,
-    mock_features: list[str],
-    valid_payload: dict,
-) -> None:
-    """cache is empty"""
-
-    def side_effect():
-        prediction_service._model_cache.update(
-            {
-                "model": mock_model,
-                "features": mock_features,
-                "name": "lazy_loaded_model",
-            }
-        )
-
-    mock_lazy_load.side_effect = side_effect
-
-    request = PredictionRequest(**valid_payload)
-    result = predict_accident(request)
-
-    mock_lazy_load.assert_called_once()
-    assert result.model_used == "lazy_loaded_model"
+    assert status["loaded"] is loaded
+    assert status["name"] == name
+    assert status["alias"] == alias
+    assert status["features_count"] == expected_count

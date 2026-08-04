@@ -12,7 +12,7 @@ from common.utils.asp_logging import get_logger
 from services.backend.src.core.auth import require_admin
 from services.backend.src.schemas.auth import UserCredentials
 from services.backend.src.schemas.training import TrainRequest, TrainResponse
-from services.backend.src.services.prediction_service import load_latest_model
+from services.backend.src.services.prediction_service import load_model
 from services.backend.src.services.training_service import run_training_container
 
 logger = get_logger(__name__)
@@ -53,7 +53,7 @@ def _train_and_reload(model_name: str | None) -> None:
     try:
         result = run_training_container(model_name=model_name)
         logger.info(f"Training succeeded: {result['model_name']}")
-        load_latest_model(force_reload=True)
+        load_model(force_reload=True)
     except RuntimeError:
         # already logged in training_service
         pass

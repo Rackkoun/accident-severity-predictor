@@ -9,8 +9,8 @@ stages:
       size: 2150
     - path: common/utils/paths.py
       hash: md5
-      md5: c9c80ce094c062b80b4b1dc1f56682c8
-      size: 1579
+      md5: 297604fcaa084cbed70ba1e08c1a42eb
+      size: 1637
     outs:
     - path: data/raw/
       hash: md5
@@ -26,8 +26,8 @@ stages:
       size: 4115
     - path: common/utils/paths.py
       hash: md5
-      md5: c9c80ce094c062b80b4b1dc1f56682c8
-      size: 1579
+      md5: 297604fcaa084cbed70ba1e08c1a42eb
+      size: 1637
     - path: data/raw/
       hash: md5
       md5: 7a5dd7dd0e8cb18a912c5e37ae281547.dir
@@ -36,42 +36,42 @@ stages:
     outs:
     - path: data/processed/
       hash: md5
-      md5: 0098bfadb8eced7fbca720ce6a8aff12.dir
-      size: 145286355
+      md5: eecc99868d50e1fb16922e672ad15a17.dir
+      size: 145439762
       nfiles: 4
   train:
     cmd: uv run python -m services.training.train
     deps:
     - path: common/utils/mlflow.py
       hash: md5
-      md5: 3eaf4d157ab4e05dbcea0caf8daa410b
-      size: 1153
+      md5: 04ba3e19bc0467d34f93359ecc600fab
+      size: 7680
     - path: common/utils/paths.py
       hash: md5
-      md5: c9c80ce094c062b80b4b1dc1f56682c8
-      size: 1579
+      md5: 297604fcaa084cbed70ba1e08c1a42eb
+      size: 1637
     - path: data/processed/
       hash: md5
-      md5: 0098bfadb8eced7fbca720ce6a8aff12.dir
-      size: 145286355
+      md5: eecc99868d50e1fb16922e672ad15a17.dir
+      size: 145439762
       nfiles: 4
     - path: services/training/train.py
       hash: md5
-      md5: 1979476fb430ba535b2455c63e22910e
-      size: 1167
+      md5: 3c01138a54279c2c3674e794cd41eac4
+      size: 1680
     outs:
     - path: artifacts/metrics/
       hash: md5
-      md5: 5aa428a7c966f7252a57c4d1fe6ac6bc.dir
-      size: 145
-      nfiles: 1
+      md5: 454576f6b7695f1e255f8c20fe876d8c.dir
+      size: 2465
+      nfiles: 17
     - path: artifacts/models/
       hash: md5
-      md5: a2f4e27f02259e03d422db94d26a3729.dir
-      size: 854809601
-      nfiles: 3
+      md5: 33ef7b09133be1460f3f56175dbc6ff4.dir
+      size: 12399209295
+      nfiles: 51
     - path: artifacts/reports/
       hash: md5
-      md5: f25fc9c69583ffdce9fbacda47f52610.dir
-      size: 3015407
-      nfiles: 38
+      md5: fc9b11aa61913ee93b7dc91dd76c6b4c.dir
+      size: 5477886
+      nfiles: 70

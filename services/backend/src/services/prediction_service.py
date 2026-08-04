@@ -1,19 +1,16 @@
 """
 Backend prediction service.
 
-Loads the latest trained model from shared artifacts volume
+Loads a registered model from the MLflow Model Registry
 and makes predictions on incoming requests.
 """
 
-import json
-from pathlib import Path
-
-import joblib
 import pandas as pd
 from fastapi import HTTPException
 
 from common.utils.asp_logging import get_logger
-from common.utils.paths import MODEL_DIR
+from common.utils.mlflow import load_registered_model, setup_mlflow
+from common.utils.paths import MODEL_CONFIG
 from services.backend.src.schemas.prediction import PredictionRequest, PredictionResponse
 
 logger = get_logger(__name__)
@@ -23,56 +20,57 @@ _model_cache: dict = {
     "model": None,
     "features": None,
     "name": None,
+    "alias": None,
 }
 
 
-def _latest_model_path(model_dir: Path, model_name: str) -> Path:
-    """return the latest model file matching model_name_*.joblib."""
-    files = list(model_dir.glob(f"{model_name}_*.joblib"))
-    if not files:
-        raise FileNotFoundError(f"No trained model found for '{model_name}_*.joblib' in {model_dir}")
-    return max(files, key=lambda p: p.stat().st_mtime)
-
-
-def _latest_feature_path(model_dir: Path, model_name: str) -> Path:
-    """return the latest features JSON matching model_name_*_features.json."""
-    files = list(model_dir.glob(f"{model_name}_*_features.json"))
-    if not files:
-        raise FileNotFoundError(f"No feature file found for '{model_name}' in {model_dir}")
-    return max(files, key=lambda p: p.stat().st_mtime)
-
-
-def load_latest_model(force_reload: bool = False) -> None:
-    """load the latest trained model and its feature list into cache.
+def load_model(
+    alias: str = "production",
+    force_reload: bool = False,
+) -> None:
+    """
+    Load a registered model from the MLflow Model Registry into cache.
 
     Args:
-        force_reload: If True, reload even if a model is already cached.
+        alias:
+            Model alias to load ("production" or "fallback").
+        force_reload:
+            Reload even if already cached.
     """
+
     global _model_cache
 
-    if _model_cache["model"] is not None and not force_reload:
+    if _model_cache["model"] is not None and _model_cache["alias"] == alias and not force_reload:
         logger.debug("Model already loaded, skipping.")
         return
 
-    logger.info("Loading latest trained model...")
-
     try:
-        model_path = _latest_model_path(MODEL_DIR, "model")
-        feature_path = _latest_feature_path(MODEL_DIR, "model")
+        setup_mlflow()
 
-        _model_cache["model"] = joblib.load(model_path)
-        with open(feature_path) as f:
-            _model_cache["features"] = json.load(f)
-        _model_cache["name"] = model_path.stem
+        loaded = load_registered_model(
+            registry_model_name=MODEL_CONFIG["model_registry_name"],
+            alias=alias,
+        )
 
-        logger.info(f"Loaded model: {_model_cache['name']} ({len(_model_cache['features'])} features)")
+        _model_cache["model"] = loaded["model"]
+        _model_cache["features"] = loaded["features"]
+        _model_cache["name"] = f"{MODEL_CONFIG['model_registry_name']}@{alias} (v{loaded['version']})"
+        _model_cache["alias"] = alias
+        logger.info(f"Loaded {_model_cache['name']} ({len(_model_cache['features'])} features)")
 
-    except FileNotFoundError as exc:
-        logger.warning(f"No model found in {MODEL_DIR}: {exc}")
-        _model_cache = {"model": None, "features": None, "name": None}
+    except Exception as exc:
+        logger.exception("Failed to load registered model.")
+
+        _model_cache = {
+            "model": None,
+            "features": None,
+            "name": None,
+            "alias": None,
+        }
+
         raise HTTPException(
             status_code=503,
-            detail=f"No trained model available. Run training first: {exc}",
+            detail=f"Unable to load model from MLflow registry: {exc}",
         ) from exc
 
 
@@ -92,7 +90,7 @@ def predict_accident(request: PredictionRequest) -> PredictionResponse:
 
     # lazy load model if not cached
     if _model_cache["model"] is None:
-        load_latest_model()
+        load_model()
 
     model = _model_cache["model"]
     features = _model_cache["features"]
@@ -147,5 +145,6 @@ def get_model_status() -> dict:
     return {
         "loaded": _model_cache["model"] is not None,
         "name": _model_cache["name"],
+        "alias": _model_cache["alias"],
         "features_count": len(_model_cache["features"]) if _model_cache["features"] else 0,
     }
