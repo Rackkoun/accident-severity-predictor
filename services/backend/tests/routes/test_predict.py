@@ -2,10 +2,8 @@
 Integration tests for backend predict route
 """
 
-# from typing import Any
 from unittest.mock import MagicMock, patch
 
-# import bcrypt
 import pytest
 from fastapi.testclient import TestClient
 
@@ -49,21 +47,6 @@ def test_predict_severe(
     assert response.status_code == 200
 
 
-@pytest.mark.parametrize(
-    "bad_payload",
-    [
-        {},  # empty
-        {"invalid": "data"},  # unknown fields
-        {"place": 999},  # out of range
-    ],
-)
-def test_predict_validation_error(client: TestClient, bad_payload: dict, override_user: None) -> None:
-    """invalid payloads return 422."""
-
-    response = client.post("/api/v1/predict", json=bad_payload)
-    assert response.status_code == 422
-
-
 @patch("services.backend.src.routes.predict.predict_accident")
 def test_predict_light(
     mock_predict: MagicMock,
@@ -82,3 +65,18 @@ def test_predict_light(
     response = client.post("/api/v1/predict", json=light_payload)
     print(f"[TEST DEBUG] response: {response.json()}")
     assert response.status_code == 200
+
+
+@pytest.mark.parametrize(
+    "bad_payload",
+    [
+        {},  # empty
+        {"invalid": "data"},  # unknown fields
+        {"place": 999},  # out of range
+    ],
+)
+def test_predict_validation_error(client: TestClient, bad_payload: dict, override_user: None) -> None:
+    """invalid payloads return 422."""
+
+    response = client.post("/api/v1/predict", json=bad_payload)
+    assert response.status_code == 422

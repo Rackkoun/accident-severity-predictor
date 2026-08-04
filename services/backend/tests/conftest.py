@@ -1,8 +1,10 @@
 """Shared fixtures for backend tests."""
 
+import base64
 from collections.abc import Iterator
 from unittest.mock import MagicMock
 
+import bcrypt
 import pytest
 from fastapi.testclient import TestClient
 
@@ -186,32 +188,37 @@ def light_payload() -> dict:
     }
 
 
-def _hash(password: str) -> str:
-    """Kept for compatibility but unused in simple auth."""
-    return password
+def _b64_hash(password: str) -> str:
+    """generate bcrypt hash and encode as base64."""
+    hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+    return base64.b64encode(hashed).decode()
 
 
 @pytest.fixture
 def fake_settings() -> Settings:
     """Test settings with fake users."""
     return Settings(
-        admin_password="admin_pwd",
-        user_password="user_pwd",
+        jwt_secret_key="test-secret-key-for-tests-only",
+        admin_username="admin",
+        admin_password_hash_b64=_b64_hash("admin_pwd"),
+        user_username="datascientest",
+        user_password_hash_b64=_b64_hash("user_pwd"),
     )
 
 
 @pytest.fixture
 def admin_user() -> UserCredentials:
-    return UserCredentials(username="admin", password="irrelevant", role="admin")
+    return UserCredentials(username="admin", role="admin")
 
 
 @pytest.fixture
 def normal_user() -> UserCredentials:
-    return UserCredentials(username="datascientest", password="irrelevant", role="user")
+    return UserCredentials(username="datascientest", role="user")
 
 
 @pytest.fixture
 def override_admin(fake_settings: Settings, admin_user: UserCredentials) -> Iterator[None]:
+
     app.dependency_overrides[get_settings] = lambda: fake_settings
     app.dependency_overrides[get_current_user] = lambda: admin_user
     yield
@@ -220,6 +227,7 @@ def override_admin(fake_settings: Settings, admin_user: UserCredentials) -> Iter
 
 @pytest.fixture
 def override_user(fake_settings: Settings, normal_user: UserCredentials) -> Iterator[None]:
+
     app.dependency_overrides[get_settings] = lambda: fake_settings
     app.dependency_overrides[get_current_user] = lambda: normal_user
     yield

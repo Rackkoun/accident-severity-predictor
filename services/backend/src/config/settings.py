@@ -1,3 +1,8 @@
+"""
+Backend settings loaded from .env.backend or environment
+"""
+
+import base64
 from functools import lru_cache
 
 from pydantic import Field
@@ -9,31 +14,44 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(
         env_file=".env.backend",
-        # case_sensitive=True,
         extra="ignore",
     )
 
-    # api_admin_username: str = Field(default="")
-    admin_password: str = Field(default="")
-    # api_admin_role: str = Field(default="admin")
+    # jwt
+    jwt_secret_key: str = Field(default="")
+    jwt_algorithm: str = Field(default="HS256")
+    jwt_expire_minutes: int = Field(default=180)
 
-    # api_user_username: str = Field(default="")
-    user_password: str = Field(default="")
-    # api_user_role:  = Field(default="user")
+    # users
+    admin_username: str = Field(default="admin")
+    admin_password_hash_b64: str = Field(default="")
 
-    # def get_admin(self) -> UserCredentials:
-    #     return UserCredentials(
-    #         username=self.api_admin_username,
-    #         password_hash=self.api_admin_password_hash,
-    #         role=self.api_admin_role,
-    #     )
+    user_username: str = Field(default="datascientest")
+    user_password_hash_b64: str = Field(default="")
 
-    # def get_user(self) -> UserCredentials:
-    #     return UserCredentials(
-    #         username=self.api_user_username,
-    #         password_hash=self.api_user_password_hash,
-    #         role=self.api_user_role,
-    #     )
+    def verify_admin(self, password: str) -> bool:
+        """verify admin password against bcrypt hash (base64 encoded)."""
+
+        if not self.admin_password_hash_b64:
+            return False
+
+        hashed = base64.b64decode(self.admin_password_hash_b64)
+
+        import bcrypt
+
+        return bcrypt.checkpw(password.encode(), hashed)
+
+    def verify_user(self, password: str) -> bool:
+        """verify user password against bcrypt hash (base64 encoded)."""
+
+        if not self.user_password_hash_b64:
+            return False
+
+        hashed = base64.b64decode(self.user_password_hash_b64)
+
+        import bcrypt
+
+        return bcrypt.checkpw(password.encode(), hashed)
 
 
 @lru_cache

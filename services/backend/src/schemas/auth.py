@@ -9,5 +9,11 @@ class UserCredentials(BaseModel):
     """User credentials model for Basic Auth."""
 
     username: str
-    password: str
     role: str
+
+
+class Token(BaseModel):
+    """Token response model."""
+
+    access_token: str
+    token_type: str = "bearer"

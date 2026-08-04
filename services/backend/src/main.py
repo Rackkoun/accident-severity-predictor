@@ -9,7 +9,7 @@ from typing import Any
 from fastapi import FastAPI
 
 from common.utils.asp_logging import get_logger
-from services.backend.src.routes import health, predict, train
+from services.backend.src.routes import auth, health, predict, train
 from services.backend.src.services.prediction_service import load_latest_model
 
 logger = get_logger(__name__)
@@ -32,6 +32,7 @@ app = FastAPI(
     ML API for predicting French road accident severity (BAAC dataset).
 
     Endpoints:
+    - **POST /api/v1/login** — Authenticate and get access token
     - **POST /api/v1/train** — Trigger model training (launches Docker container)
     - **POST /api/v1/predict** — Predict severity from accident features
     - **GET /api/v1/health** — Check service and model status
@@ -40,6 +41,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.include_router(auth.router)
 app.include_router(health.router)
 app.include_router(train.router)
 app.include_router(predict.router)
@@ -50,6 +52,7 @@ async def root() -> dict:
     return {
         "message": "Accident Severity Predictor API",
         "docs": "/docs",
+        "auth": "/api/v1/login",
         "health": "/api/v1/health",
         "train": "/api/v1/train",
         "predict": "/api/v1/predict",
