@@ -10,14 +10,22 @@ from fastapi.testclient import TestClient
 
 @pytest.mark.parametrize(
     ("loaded", "name", "expected_loaded", "expected_name"),
-    [(False, None, False, None), (True, "model_20260723000000", True, "model_20260723000000")],
+    [
+        (False, None, False, None),
+        (
+            True,
+            "accident-severity-predictor@production (v7)",
+            True,
+            "accident-severity-predictor@production (v7)",
+        ),
+    ],
 )
 def test_health(client: TestClient, loaded: bool, name: str | None, expected_loaded: bool, expected_name: str | None) -> None:
     """health endpoint should reflect model loading status"""
 
     with patch(
         "services.backend.src.routes.health.get_model_status",
-        return_value={"loaded": loaded, "name": name, "features_count": 29 if loaded else 0},
+        return_value={"loaded": loaded, "name": name, "alias": "production" if loaded else None, "features_count": 29 if loaded else 0},
     ):
         response = client.get("/api/v1/health")
 

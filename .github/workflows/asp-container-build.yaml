@@ -7,6 +7,8 @@ on:
         required: true
       AWS_SECRET_ACCESS_KEY:
         required: true
+      DAGSHUB_USER_TOKEN:
+        required: true
 
 jobs:
   build:
@@ -68,6 +70,7 @@ jobs:
             -v /var/run/docker.sock:/var/run/docker.sock \
             -e HOST_DATA_DIR="$(pwd)/data" \
             -e HOST_ARTIFACTS_DIR="$(pwd)/artifacts" \
+            -e DAGSHUB_USER_TOKEN="${{ secrets.DAGSHUB_USER_TOKEN }}" \
             ${{ matrix.image }}
 
             # log output for better debugging

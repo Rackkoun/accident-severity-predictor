@@ -4,7 +4,12 @@ training entrypoint
 
 import mlflow
 
-from common.utils.mlflow import log_run, setup_mlflow
+from common.utils.mlflow import (
+    log_run,
+    promote_if_better,
+    register_model,
+    setup_mlflow,
+)
 from common.utils.paths import (
     METRIC_DIR,
     MODEL_CONFIG,
@@ -39,8 +44,20 @@ def main() -> None:
             reports_dir=REPORT_DIR,
         )
 
-        # log run to mlflow
-        log_run(train_out, eval_out)
+        # mlflow: log run -> register model -> promote model if better
+        model_info = log_run(
+            train_out=train_out,
+            eval_out=eval_out,
+        )
+        registered_version = register_model(
+            model_info=model_info,
+            registry_model_name=MODEL_CONFIG["model_registry_name"],
+        )
+        promote_if_better(
+            registered_version=registered_version,
+            eval_out=eval_out,
+            registry_model_name=MODEL_CONFIG["model_registry_name"],
+        )
 
 
 if __name__ == "__main__":
