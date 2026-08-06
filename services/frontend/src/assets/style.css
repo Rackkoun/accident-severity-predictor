@@ -1,0 +1,36 @@
+/* ---------- GLOBAL ------------- */
+html,
+body,
+[class*="css"] {
+    background-color: #192E36;
+    color: #F2F2F2;
+}
+
+/* --------- Header ----------- */
+h1,
+h2,
+h3 {
+    color: #F2F2F2;
+}
+
+/* --------- Buttons ----------- */
+.stButton>button {
+    width: 100%;
+    border-radius: 10px;
+    height: 48px;
+    background-color: #599191;
+    color: white;
+    border: none;
+    font-weight: 600;
+}
+
+.stButton>button:hover {
+    background-color: #36B3C9;
+}
+
+/* --------- Cards ----------- */
+div[data-testid="stMetric"] {
+    background-color: #233943;
+    border-radius: 10px;
+    padding: 12px;
+}
