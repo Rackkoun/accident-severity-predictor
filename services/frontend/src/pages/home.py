@@ -6,7 +6,8 @@ import streamlit as st
 
 
 def home_page() -> None:
-    """render home page"""
 
-    st.title("🚗 - Accident Severity Predictor (ASP)")
+    st.title("🚗 Accident Severity Predictor")
     st.markdown("---")
+    st.header("AI-powered Road Accident Severity Prediction")
+    st.info("Welcome to the ASP plateform. \n\nUse the sidebar to navigate through the application")

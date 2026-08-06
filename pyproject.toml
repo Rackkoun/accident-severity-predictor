@@ -81,6 +81,9 @@ select = [
 # Notebooks: trailing whitespace + ML naming
 "notebooks/**/*.ipynb" = ["N803", "N806", "W291"]
 
+# fronten run
+"services/frontend/run.py" = ["E402"]
+
 
 [tool.ruff.format]
 quote-style = "double"
