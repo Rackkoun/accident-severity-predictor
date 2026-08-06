@@ -12,11 +12,19 @@ Step map (your 8-task spec):
      (+ build_dataset)         -> build processed X/y (needed prep) [IMPLEMENTED, Docker]
   3. validate_data             -> data quality + shape checks       [IMPLEMENTED, Docker+runner]
   2. version_dataset_dvc       -> version dataset with DVC          [IMPLEMENTED, needs creds]
-  4. train_and_log_mlflow      -> train + evaluate (+MLflow log)    [training IMPLEMENTED; MLflow = hook]
-  5. compare_against_champion  -> compare new vs current champion   [PLACEHOLDER — needs MLflow]
-  6. promote_to_production     -> promote in MLflow Registry        [PLACEHOLDER — needs MLflow]
+  4. train_and_log_mlflow      -> train + evaluate + REGISTER cand. [IMPLEMENTED, Docker]
+  5. compare_against_champion  -> compare candidate vs champion     [IMPLEMENTED, Docker (promote compare)]
+  6. promote_to_production     -> promote in MLflow Registry        [IMPLEMENTED, Docker (promote promote)]
   7. reload_fastapi            -> tell the API to load new model    [PLACEHOLDER — needs reload endpoint]
   8. success/failure alerts    -> logging + alert hooks             [IMPLEMENTED as callbacks]
+
+Promotion design (Option B): the training step only trains + logs + REGISTERS a
+candidate model version. The DAG then GOVERNS promotion as two explicit steps that
+run `services.training.promote` (compare, then promote) — reusing the tested
+`promote_if_better` helper. Keeping promotion in the orchestrator (not the training
+script) is the cleaner MLOps separation. Steps 5 & 6 therefore run as DockerOperator
+tasks in the training image, exactly like train. Only STEP 7 (API reload) remains a
+placeholder — it needs a reload endpoint the backend does not expose yet.
 
 NOTE on ordering: your spec lists version(2) before validate(3). We intentionally run
 `validate_data` BEFORE `version_dataset_dvc` so we never version a dataset that failed
@@ -82,26 +90,9 @@ default_args = {
 
 
 # ---------------------------------------------------------------------------
-# Placeholder callables (steps 5, 6, 7) — teammates plug real logic in here
+# Placeholder callable (step 7) — teammate plugs real logic in here
+# (Steps 5 & 6 are now REAL DockerOperator tasks running services.training.promote.)
 # ---------------------------------------------------------------------------
-def _compare_against_champion(**context) -> bool:
-    """STEP 5 — compare the newly trained model against the current champion.
-
-    TODO(MLflow owner): load the champion's metrics from the MLflow Registry, load this
-    run's metrics (from artifacts/metrics/ or MLflow), and decide if the new model is
-    better. Push the decision to XCom for the promote step to read.
-    """
-    log.info("STEP 5 (placeholder): would compare new model vs current champion via MLflow.")
-    log.info("  -> assuming IMPROVED for now so the demo flows; real logic pending MLflow.")
-    return True
-
-
-def _promote_to_production(**context) -> None:
-    """STEP 6 — promote the new model to 'Production' in the MLflow Registry (if better)."""
-    log.info("STEP 6 (placeholder): would transition the model to 'Production' in MLflow Registry.")
-    log.info("  -> pending MLflow Registry (teammate).")
-
-
 def _reload_fastapi(**context) -> None:
     """STEP 7 — signal the running FastAPI backend to load the newly promoted model."""
     if not FASTAPI_RELOAD_URL:
@@ -197,29 +188,44 @@ with DAG(
         **DOCKER_COMMON,
     )
 
-    # STEP 4 — train + evaluate the model (services.training.train does both).
+    # DagsHub token env, shared by the train/compare/promote tasks (they all talk to
+    # MLflow via dagshub.init(), which needs the token in a headless container).
+    MLFLOW_ENV = {"DAGSHUB_USER_TOKEN": os.environ.get("DAGSHUB_USER_TOKEN", "")}
+
+    # STEP 4 — train + evaluate, then REGISTER the model as a new candidate version.
+    #          (services.training.train no longer auto-promotes — the DAG governs that.)
     train_and_log_mlflow = DockerOperator(
         task_id="train_and_log_mlflow",
         image=TRAINING_IMAGE,
         entrypoint=[VENV_PYTHON],
         command=["-m", "services.training.train"],
         mounts=APP_MOUNTS,
-        # training calls dagshub.init() for MLflow -> pass the DagsHub token so it
-        # authenticates non-interactively (no browser/OAuth in a headless container).
-        environment={"DAGSHUB_USER_TOKEN": os.environ.get("DAGSHUB_USER_TOKEN", "")},
+        environment=MLFLOW_ENV,
         **DOCKER_COMMON,
     )
 
-    # STEP 5 — compare new model vs current champion (placeholder; needs MLflow).
-    compare_against_champion = PythonOperator(
+    # STEP 5 — compare the candidate against the current champion (read-only).
+    #          Logs the verdict and writes artifacts/reports/promotion_decision.json.
+    compare_against_champion = DockerOperator(
         task_id="compare_against_champion",
-        python_callable=_compare_against_champion,
+        image=TRAINING_IMAGE,
+        entrypoint=[VENV_PYTHON],
+        command=["-m", "services.training.promote", "compare"],
+        mounts=APP_MOUNTS,
+        environment=MLFLOW_ENV,
+        **DOCKER_COMMON,
     )
 
-    # STEP 6 — promote to Production in the MLflow Registry (placeholder; needs MLflow).
-    promote_to_production = PythonOperator(
+    # STEP 6 — promote the candidate to the 'production' alias IF it beats the champion
+    #          (moves the old model to 'fallback' for rollback). Reuses promote_if_better.
+    promote_to_production = DockerOperator(
         task_id="promote_to_production",
-        python_callable=_promote_to_production,
+        image=TRAINING_IMAGE,
+        entrypoint=[VENV_PYTHON],
+        command=["-m", "services.training.promote", "promote"],
+        mounts=APP_MOUNTS,
+        environment=MLFLOW_ENV,
+        **DOCKER_COMMON,
     )
 
     # STEP 7 — signal FastAPI to reload the new model (placeholder; needs a reload endpoint).

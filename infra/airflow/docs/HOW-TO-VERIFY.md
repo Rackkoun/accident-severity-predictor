@@ -20,17 +20,17 @@ You have GitHub Desktop, Docker Desktop, and DagsHub accounts, so all four tiers
 ```bash
 # from the repo root
 uv python pin 3.12
-uv sync --all-groups         # installs the EXACT locked versions (incl. pandas 3.x)
+uv sync --all-groups         # installs the EXACT locked versions from uv.lock
 uv run pre-commit install
 ```
 
 ✅ **Expected:** `uv sync` prints "Installed N packages" and creates `.venv/`.
 
-> **Why use `uv sync` and not plain `pip`:** the project pins `pandas>=3.0.3`, and some code
-> (e.g. `select_dtypes(include=["object","str"])`) uses **pandas 3.0 syntax**. If you install
-> a random older pandas, ~12 data-cleaning tests fail with `numpy string dtypes are not allowed`.
-> `uv sync` installs the locked pandas 3.x, so everything passes. (If you ever see that error,
-> your environment isn't the pinned one — re-run `uv sync`.)
+> **Why use `uv sync` and not plain `pip`:** the project pins exact, mutually compatible versions
+> in `uv.lock` (e.g. `pandas>=2.2,<3`, `mlflow>=2.22,<3`). `uv sync` installs those locked versions
+> so the whole suite passes deterministically. If you install a random pandas/mlflow with plain
+> `pip`, you can get version-mismatch failures in the data or MLflow tests. If you ever see such an
+> error, your environment isn't the pinned one — re-run `uv sync`.
 
 ---
 
@@ -58,8 +58,15 @@ uv run pytest services/training/tests -v
 uv run pytest services/backend/tests -v
 ```
 
-✅ **Expected:** all tests `PASSED` (≈97 test instances across common/training/backend), then a
-coverage table, then exit code 0 because coverage ≥ 80%.
+✅ **Expected:** all tests `PASSED` (≈100+ test instances across common/training/backend and the
+Airflow feature), then a coverage table, then exit code 0 because coverage ≥ 80%.
+
+> **Airflow feature tests** are collected by the same `uv run pytest`:
+> `services/training/tests/test_promote.py` (steps 5 & 6 promotion logic) and
+> `infra/airflow/tests/test_validate_data.py` (the `validate_data` gate) run always.
+> `infra/airflow/tests/test_dags.py` (DAG-integrity) **skips** unless Airflow is installed — to run
+> it: `uv sync --group airflow-tests` then `uv run pytest infra/airflow/tests/test_dags.py -q`
+> (or run it inside the `asp-airflow` container). See phase-8 guide §8.7 → "Tests for this feature".
 
 > Reference: in a quick sandbox run on the *wrong* pandas (2.3.3), 85/97 passed and the only 12
 > failures were the pandas-3.0-syntax ones above. On your `uv sync` environment, expect **all green**.
@@ -206,15 +213,23 @@ Tier 3 below; without it, `train_evaluate` fails with a DagsHub OAuth error).
 
 Same Airflow instance. Enable **`asp_retraining`** and trigger it.
 
-✅ **Expected:** these run for real and go green — `check_and_ingest_data`, `build_dataset`,
-`validate_data`, `train_and_log_mlflow`. These three go green **as no-ops** (they log a `TODO` and
-pass, by design, because they need teammates' components): `compare_against_champion`,
-`promote_to_production`, `reload_fastapi`. Open `validate_data` → **Logs** to see the
-`[VALIDATION] PASS: X_train=(...)` line.
+> **If you changed training code, rebuild `asp-training` first.** Steps 4–6 run
+> `services.training.train` / `services.training.promote` **inside** the image (baked in at build
+> time, not mounted): `docker compose --profile build-only build`. Skip this and the compare/promote
+> tasks fail with `No module named services.training.promote`.
 
-Two tasks need your DagsHub token (Tier 3 below): `train_and_log_mlflow` (MLflow auth) and
-`version_dataset_dvc` (DVC push). Confirm the DVC push worked by opening `version_dataset_dvc` →
-**Logs** for `N files pushed`, then `dvc status -c` → *"Cache and remote 'origin' are in sync"*.
+✅ **Expected:** these run for real and go green — `check_and_ingest_data`, `build_dataset`,
+`validate_data`, `train_and_log_mlflow` (train + log + **register** candidate), and now also
+`compare_against_champion` + `promote_to_production` (real MLflow registry compare + promote, "Option
+B"). Only `reload_fastapi` is still a no-op placeholder (needs a backend reload endpoint). Open
+`validate_data` → **Logs** for `[VALIDATION] PASS: X_train=(...)`, and `compare_against_champion` →
+**Logs** for the `candidate v… is BETTER/NOT better than current production …` verdict.
+
+Three tasks need your DagsHub token (Tier 3 below): `train_and_log_mlflow`,
+`compare_against_champion`, and `promote_to_production` (all hit MLflow), plus `version_dataset_dvc`
+(DVC push). Confirm the DVC push via `version_dataset_dvc` → **Logs** for `N files pushed`, then
+`dvc status -c` → *"Cache and remote 'origin' are in sync"*. Confirm the promotion on DagsHub →
+repo → **Models**: the winning version gets the `production` alias, the old one `fallback`.
 
 ### Tear down
 

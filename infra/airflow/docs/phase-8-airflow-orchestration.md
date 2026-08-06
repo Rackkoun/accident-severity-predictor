@@ -442,12 +442,22 @@ pipeline** with eight steps — ingest new data, version it, validate it, retrai
 current best model, promote the winner, tell the API to reload, and alert on success/failure. That
 lives in `infra/airflow/dags/asp_retraining_dag.py` as the `asp_retraining` DAG.
 
-The honest reality of a **group project**: some of those steps belong to *other people's*
-components (MLflow is a teammate's; the API reload needs an endpoint in the backend service). So the
-DAG is built as a **complete skeleton** — the steps in the Airflow owner's lane are fully
-implemented, and the cross-team steps are **clearly-marked placeholder tasks that succeed as no-ops**
-until a teammate plugs their logic in. This way the DAG runs end-to-end *today*, shows the whole
-intended flow, and doesn't block on anyone.
+The honest reality of a **group project**: originally several of these steps depended on a
+teammate's MLflow work, so they shipped as clearly-marked placeholders. That teammate has since
+merged the **MLflow model registry** (`register_model`, `promote_if_better`, `load_registered_model`
+in `common/utils/mlflow.py`), so steps 4, 5, and 6 are now **fully implemented**. Only **step 7**
+(tell the API to reload) remains a placeholder — it needs a reload endpoint the backend does not
+expose yet. The DAG still runs end-to-end today and now performs a *real* champion/challenger
+promotion in the shared registry.
+
+> **Design note — "Option B" (promotion governed by the orchestrator).** The training step
+> (`services.training.train`) now only **trains + logs + registers** a candidate model version — it
+> does *not* auto-promote. The DAG then governs promotion as two explicit steps (`compare` then
+> `promote`) that run a small `services.training.promote` module which **reuses** the tested
+> `promote_if_better` helper. Keeping the promotion decision in the pipeline (not buried in the
+> training script) is the cleaner MLOps separation: the *pipeline* decides what reaches production,
+> and each decision is its own visible, retry-able task. (Training can still self-promote if you set
+> `ASP_PROMOTE_AFTER_TRAIN=1` — off by default so the DAG stays in charge.)
 
 ### The eight steps and their status
 
@@ -456,9 +466,9 @@ intended flow, and doesn't block on anyone.
 | 1 | `check_and_ingest_data` (+ `build_dataset`) | `DockerOperator` runs `download_data` then `make_dataset` | ✅ implemented |
 | 3 | `validate_data` | `DockerOperator` runs `scripts/validate_data.py` in the runner image | ✅ implemented |
 | 2 | `version_dataset_dvc` | `DockerOperator` runs `dvc commit -f && dvc push` in the runner image | ✅ implemented* |
-| 4 | `train_and_log_mlflow` | `DockerOperator` runs `services.training.train` | ✅ training; 🟡 MLflow = hook |
-| 5 | `compare_against_champion` | `PythonOperator` stub | 🟡 placeholder (MLflow) |
-| 6 | `promote_to_production` | `PythonOperator` stub | 🟡 placeholder (MLflow) |
+| 4 | `train_and_log_mlflow` | `DockerOperator` runs `services.training.train` (train + log + **register** candidate) | ✅ implemented |
+| 5 | `compare_against_champion` | `DockerOperator` runs `services.training.promote compare` (read-only verdict + decision file) | ✅ implemented |
+| 6 | `promote_to_production` | `DockerOperator` runs `services.training.promote promote` (reuses `promote_if_better`) | ✅ implemented |
 | 7 | `reload_fastapi` | `PythonOperator` stub (optional HTTP POST) | 🟡 placeholder (needs endpoint) |
 | 8 | success/failure alerts | DAG `on_success_callback` / `on_failure_callback` | ✅ implemented |
 
@@ -478,16 +488,29 @@ RUN pip install --no-cache-dir "dvc[s3]>=3.67.1" "pandas"
 It bakes in *no* project code — the DAG bind-mounts the repo/data into it at run time. Same
 "reuse-and-mount, don't-duplicate" instinct as the rest of the feature.
 
-**(b) `PythonOperator` — logic that runs *inside* Airflow.** Steps 5–7 don't launch a container; they
-run a Python function in the Airflow process itself. That's the other core Airflow operator besides
-`DockerOperator`. Each placeholder is a small function with a `TODO(owner)` and a `log.info` of what
-it *will* do, returning cleanly so the DAG stays green:
+**(b) `PythonOperator` — logic that runs *inside* Airflow.** Not every task launches a container; a
+`PythonOperator` runs a Python function in the Airflow process itself. That's the other core Airflow
+operator besides `DockerOperator`. Here it's used only for **step 7** (`reload_fastapi`), which stays
+a placeholder — a small function with a `TODO` and a `log.info`, returning cleanly so the DAG stays
+green until the backend exposes a reload endpoint:
 
 ```python
-def _compare_against_champion(**context) -> bool:
-    log.info("STEP 5 (placeholder): would compare new model vs champion via MLflow.")
-    return True   # assume improved so the demo flows; real logic pending MLflow
+def _reload_fastapi(**context) -> None:
+    if not FASTAPI_RELOAD_URL:
+        log.info("STEP 7 (placeholder): FASTAPI_RELOAD_URL not set; nothing to reload yet.")
+        return
+    requests.post(FASTAPI_RELOAD_URL, timeout=10)   # once the endpoint exists
 ```
+
+**(c) Promotion as two DockerOperator steps (Option B).** Steps 5 and 6 run in the *training image*
+(which has the project code + MLflow), exactly like the train step, via a small `services.training.promote`
+module. Step 5 (`compare`) is **read-only**: it finds the freshly registered candidate, compares its
+`f1_score` to the current `production` model, logs the verdict, and writes
+`artifacts/reports/promotion_decision.json` (a simple, auditable hand-off over the shared volume).
+Step 6 (`promote`) calls the tested `promote_if_better`, which promotes the candidate to the
+`production` alias **only if it wins** — and moves the old champion to a `fallback` alias so you can
+roll back. Nothing about the promotion logic is reimplemented; the DAG just *orchestrates* the
+teammate's registry helpers as visible steps.
 
 ### How each in-scope step works
 
@@ -500,6 +523,17 @@ def _compare_against_champion(**context) -> bool:
   to record the current pipeline outputs in `dvc.lock` and upload them to DagsHub. It reads
   `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` from the environment (set them in `infra/airflow/.env`). Leave
   them blank and this task fails loudly — the correct signal that creds are missing.
+- **`train_and_log_mlflow`** runs `services.training.train`, which trains + evaluates, logs the run to
+  MLflow, and **registers** the model as a new candidate version — but does **not** promote it (see the
+  Option B note above). It reads `DAGSHUB_USER_TOKEN` for headless MLflow auth.
+- **`compare_against_champion`** runs `services.training.promote compare`. It finds the just-registered
+  candidate, reads its `f1_score` from `artifacts/metrics/`, compares it to the current `production`
+  model's metric, logs the verdict, and writes `artifacts/reports/promotion_decision.json`. It is
+  **read-only** — it never changes an alias, so it's a safe, informative gate.
+- **`promote_to_production`** runs `services.training.promote promote`, which calls the tested
+  `promote_if_better`: if the candidate's `f1_score` beats the current `production` model, it sets the
+  new version's `production` alias and moves the old one to `fallback` (rollback safety); otherwise it
+  leaves production unchanged. This is the real registry write — you'll see the alias move on DagsHub.
 - **Alerts (step 8)** are DAG-level callbacks: `_on_success` / `_on_failure` log a clear message and
   mark exactly where an email/Slack/Teams notification would hook. Airflow calls them automatically —
   no extra task needed.
@@ -518,19 +552,36 @@ check_and_ingest_data >> build_dataset >> validate_data >> version_dataset_dvc
 
 ### Running it
 
-Same as the core DAG, plus build the runner image first and set your DagsHub token (needed by both
-the train task's MLflow logging **and** the DVC-push task):
+Same as the core DAG, plus three things: build the runner image, **(re)build the training image**,
+and set your DagsHub token (needed by the train/compare/promote tasks **and** the DVC-push task).
+
+> **⚠️ Rebuild `asp-training` whenever the training code changes.** Steps 4, 5 and 6 run
+> `services.training.train` and `services.training.promote` **inside** the `asp-training:latest`
+> image — that code is *baked into the image at build time*, not mounted. So after the Option B
+> change (new `services/training/promote.py`, edited `train.py`) you **must** rebuild the image, or
+> the compare/promote tasks fail with `No module named services.training.promote`. (The DAG file
+> itself *is* live-mounted via `./dags`, so DAG edits don't need a rebuild — only the image's Python
+> code does.)
 
 ```powershell
-docker build -f infra/airflow/Dockerfile.runner -t asp-airflow-runner:latest infra/airflow   # once
-# in infra/airflow/.env set all three to your DagsHub token (one token does both jobs):
-#   DAGSHUB_USER_TOKEN=<token>      # MLflow auth (train_and_log_mlflow)
-#   AWS_ACCESS_KEY_ID=<token>       # DagsHub S3 for dvc push (version_dataset_dvc)
-#   AWS_SECRET_ACCESS_KEY=<token>
+# 1) helper image for validate_data + version_dataset_dvc (once)
+docker build -f infra/airflow/Dockerfile.runner -t asp-airflow-runner:latest infra/airflow
+
+# 2) REBUILD the training image so it contains promote.py + the updated train.py
+docker compose --profile build-only build          # -> asp-training:latest
+
+# 3) in infra/airflow/.env set all three to your DagsHub token (one token does every job):
+#      DAGSHUB_USER_TOKEN=<token>      # MLflow auth (train + compare + promote)
+#      AWS_ACCESS_KEY_ID=<token>       # DagsHub S3 for dvc push (version_dataset_dvc)
+#      AWS_SECRET_ACCESS_KEY=<token>
+
+# 4) start / recreate Airflow (DAG file is live-mounted)
+cd infra/airflow
 docker compose -f docker-compose.airflow.yml up -d --build
 docker exec asp-airflow airflow dags list-import-errors        # should be empty
-# UI: enable + trigger "asp_retraining"; watch all 8 boxes go green.
-# The placeholder steps (5-7) log their TODOs and pass as no-ops.
+
+# 5) UI: enable + trigger "asp_retraining"; watch all 8 boxes go green.
+#    Steps 5 & 6 now do REAL registry compare + promote; only step 7 (reload) is a no-op.
 ```
 
 > **Get a DagsHub token:** dagshub.com → your avatar → **Settings → Tokens** → copy your default
@@ -577,14 +628,63 @@ reproducibility payoff: `dvc.lock` (in git) now holds the md5 of the exact datas
   docker exec asp-airflow sh -lc "find /opt/airflow/logs -path '*asp_retraining*train_and_log_mlflow*' -name '*.log' | sort | tail -1 | xargs grep -iE 'n_estimators|run|accuracy|f1'"
   ```
 
-### Handing off the placeholders
+**`compare_against_champion` + `promote_to_production` (the registry writes).** Open
+`compare_against_champion` → **Logs** for the verdict line (`candidate v… is BETTER/NOT better than
+current production …`), then `promote_to_production` → **Logs** for `promoted to 'production'` or
+`NOT promoted`. Confirm on DagsHub → repo → **Models** (or the registry view): the
+`accident-severity-predictor` model should show a **`production`** alias on the winning version and a
+**`fallback`** alias on the previous champion. On a first-ever run there's no champion yet, so the
+candidate is promoted by default. Re-run the DAG a few times and watch the aliases move as better
+models win — that's the champion/challenger loop working end-to-end.
 
-- **Steps 4–6 (MLflow):** your teammate's integration point is the `train_and_log_mlflow` hook (log the
-  run) and the `_compare_against_champion` / `_promote_to_production` callables (read the registry,
-  decide, promote). A natural improvement is to make step 6 *conditional* on step 5 (only promote if
-  better) using a `ShortCircuitOperator` or XCom — the stub already returns the decision.
-- **Step 7 (reload):** once the backend exposes a reload endpoint, set `FASTAPI_RELOAD_URL` in
-  `infra/airflow/.env` and `reload_fastapi` will POST to it automatically.
+### Handing off the last placeholder
+
+- **Steps 4–6 are done.** Training registers the candidate; the DAG's `compare` and `promote` steps
+  (via `services.training.promote`) do the real champion/challenger decision and alias promotion,
+  reusing the teammate's `promote_if_better`. Promotion is already **conditional** — the candidate
+  only reaches `production` if it beats the current champion.
+- **Step 7 (reload) is the only placeholder left.** Once the backend exposes a reload endpoint (e.g.
+  `POST /model/reload` that calls `prediction_service.load_model(force_reload=True)`), set
+  `FASTAPI_RELOAD_URL` in `infra/airflow/.env` and `reload_fastapi` will POST to it automatically.
+
+### Tests for this feature
+
+Like the rest of the codebase, the Airflow feature is unit-tested (same `pytest` suite):
+
+- **`services/training/tests/test_promote.py`** — the promotion logic that steps 5 & 6 run
+  (`compare` / `promote`), with MLflow mocked. Runs in the default suite, no extra deps.
+- **`infra/airflow/tests/test_validate_data.py`** — the `validate_data` quality gate: the pass case
+  plus each failure branch (missing file, empty, row mismatch, column mismatch, non-binary target).
+  Plain pandas, runs in the default suite.
+- **`infra/airflow/tests/test_dags.py`** — DAG-integrity: both DAGs parse with no import errors and
+  have the expected task ids and wiring (train → compare → promote → reload; validate before version).
+  This one needs Airflow to import the DAGs, so it is **skipped unless Airflow is installed**
+  (`pytest.importorskip`).
+
+**How to run them**
+
+```powershell
+# 1) The always-on tests (no Airflow needed) — part of the normal suite:
+uv run pytest services/training/tests/test_promote.py infra/airflow/tests/test_validate_data.py -q
+
+# 1b) Or just run the whole project suite — these are collected automatically:
+uv run pytest
+
+# 2) The DAG-integrity test — install the isolated Airflow group first:
+uv sync --group airflow-tests        # installs apache-airflow==2.10.5 + docker provider
+uv run pytest infra/airflow/tests/test_dags.py -q
+```
+
+> The `airflow-tests` group is **optional and isolated** — teammates who don't install it simply see
+> `test_dags.py` **skipped** (you'll see `s` / "skipped" in the output); nothing breaks, and
+> `test_promote.py` + `test_validate_data.py` still run. If `uv sync --group airflow-tests` can't
+> resolve against the project's pins (Airflow 2.10 has many constraints), **don't force it** — run
+> the DAG test inside the `asp-airflow` container instead, which already has Airflow:
+>
+> ```powershell
+> docker cp infra/airflow/tests asp-airflow:/opt/airflow/_tests
+> docker exec asp-airflow python -m pytest /opt/airflow/_tests/test_dags.py -q
+> ```
 
 ---
 
@@ -592,10 +692,11 @@ reproducibility payoff: `dvc.lock` (in git) now holds the md5 of the exact datas
 
 1. **Schedule it.** Change `schedule=None` to a cron string (e.g. `"0 2 * * 1"`) to retrain weekly —
    the course's "retraining automation" deliverable.
-2. **Make promotion conditional.** Gate `promote_to_production` on `compare_against_champion` so only
-   a better model is promoted.
-3. **Wire real alerts.** Turn the callback log lines into email/Slack notifications.
-4. **Complete the hand-offs** — the MLflow steps (4–6) and the FastAPI reload (7) with your teammates.
+2. **Finish step 7.** Add the backend reload endpoint and wire `FASTAPI_RELOAD_URL` so a freshly
+   promoted model is served without a restart.
+3. **Wire real alerts.** Turn the step-8 callback log lines into email/Slack notifications.
+4. **Harden the gates.** Add a hard minimum-metric floor in the `compare` step (not just "better than
+   champion"), and consider a post-promotion smoke test that calls `/predict` with a known sample.
 
 ---
 

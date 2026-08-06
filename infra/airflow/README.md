@@ -23,11 +23,16 @@ are clearly-marked placeholders that succeed as no-ops until wired in:
 | 1 | `check_and_ingest_data` (+ `build_dataset`) | ✅ implemented (Docker) |
 | 3 | `validate_data` — quality + shape checks | ✅ implemented (runner image) |
 | 2 | `version_dataset_dvc` — `dvc commit` + `dvc push` | ✅ implemented (needs DagsHub creds) |
-| 4 | `train_and_log_mlflow` — train + evaluate | ✅ training; 🟡 MLflow = hook |
-| 5 | `compare_against_champion` | 🟡 placeholder (needs MLflow) |
-| 6 | `promote_to_production` | 🟡 placeholder (needs MLflow) |
+| 4 | `train_and_log_mlflow` — train + log + register candidate | ✅ implemented |
+| 5 | `compare_against_champion` — `promote compare` (read-only verdict) | ✅ implemented |
+| 6 | `promote_to_production` — `promote promote` (reuses `promote_if_better`) | ✅ implemented |
 | 7 | `reload_fastapi` | 🟡 placeholder (needs a backend reload endpoint) |
 | 8 | success/failure alerts | ✅ implemented (DAG callbacks) |
+
+> **Promotion = "Option B":** training only trains + logs + **registers** a candidate; the DAG
+> governs promotion via `services.training.promote` (compare → promote, reusing the tested
+> `promote_if_better`). Set `ASP_PROMOTE_AFTER_TRAIN=1` to let training self-promote instead (off by
+> default). Steps 4–6 need `DAGSHUB_USER_TOKEN` in `.env`.
 
 > The retraining DAG runs `validate_data` **before** `version_dataset_dvc` on purpose (don't
 > version data that failed QA). Swap those two lines in the DAG to match a strict 2-before-3 order.
