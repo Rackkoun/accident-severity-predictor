@@ -40,6 +40,9 @@ dev = [
 ]
 frontend = [
     { name = "plotly" },
+    { name = "pydantic" },
+    { name = "pydantic-settings" },
+    { name = "requests" },
     { name = "streamlit" },
 ]
 training = [
@@ -80,6 +83,9 @@ dev = [
 ]
 frontend = [
     { name = "plotly", specifier = ">=6.9.0" },
+    { name = "pydantic", specifier = ">=2.13.4" },
+    { name = "pydantic-settings", specifier = ">=2.14.2" },
+    { name = "requests", specifier = ">=2.34.2" },
     { name = "streamlit", specifier = ">=1.59.1" },
 ]
 training = [

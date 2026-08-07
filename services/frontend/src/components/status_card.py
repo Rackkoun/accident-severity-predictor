@@ -2,9 +2,18 @@
 status card component
 """
 
+from dataclasses import dataclass
+
 import streamlit as st
 
 
-def status_card(title: str, value: str, icon: str = "ℹ️") -> None:
+@dataclass(slots=True)
+class StatusCard:
+    title: str
+    value: str
+    icon: str
 
-    st.metric(label=f"{icon} {title}", value=value)
+
+def render_status_card(card: StatusCard) -> None:
+
+    st.metric(label=f"{card.icon} {card.title}", value=card.value)

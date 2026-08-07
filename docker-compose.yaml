@@ -54,6 +54,21 @@ services:
     networks:
       - asp-network
 
+  frontend:
+    build:
+      context: .
+      dockerfile: services/frontend/Dockerfile.frontend
+    image: asp-frontend:latest
+    container_name: asp-frontend
+    ports:
+      - "8501:8501"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - asp-network
+
 networks:
   asp-network:
     name: asp-network
