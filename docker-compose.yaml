@@ -62,6 +62,8 @@ services:
     container_name: asp-frontend
     ports:
       - "8501:8501"
+    environment:
+      - BACKEND_URL=http://asp-backend:8000
     depends_on:
       backend:
         condition: service_healthy

@@ -16,7 +16,7 @@ class APIService:
 
         return self.session.get(
             self.base_url + endpoint,
-            timeout=5,
+            timeout=3,
         )
 
 
