@@ -5,6 +5,7 @@ Backend settings loaded from .env.backend or environment
 import base64
 from functools import lru_cache
 
+import bcrypt
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -37,8 +38,6 @@ class Settings(BaseSettings):
 
         hashed = base64.b64decode(self.admin_password_hash_b64)
 
-        import bcrypt
-
         return bcrypt.checkpw(password.encode(), hashed)
 
     def verify_user(self, password: str) -> bool:
@@ -48,8 +47,6 @@ class Settings(BaseSettings):
             return False
 
         hashed = base64.b64decode(self.user_password_hash_b64)
-
-        import bcrypt
 
         return bcrypt.checkpw(password.encode(), hashed)
 
