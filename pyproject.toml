@@ -8,10 +8,13 @@ dependencies = []
 
 [dependency-groups]
 backend = [
+    "bcrypt>=5.0.0",
     "fastapi>=0.139.0",
     "httpx2>=2.9.0",
     "pydantic>=2.13.4",
     "pydantic-settings>=2.14.2",
+    "pyjwt>=2.13.0",
+    "python-multipart>=0.0.32",
     "requests>=2.34.2",
     "uvicorn>=0.51.0",
 ]
