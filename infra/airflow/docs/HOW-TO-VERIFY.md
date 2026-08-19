@@ -176,7 +176,7 @@ docker run --rm --entrypoint uv asp-backend:latest  run --no-sync python -c "imp
 
 ✅ **Expected:** each prints `OK` — the images import your code cleanly (this is what CI checks).
 
-### Step 4 — Airflow: the simple pipeline DAG (Phase 8)
+### Step 4 — Airflow: bring it up (Phase 8)
 
 From the **`infra/airflow/` folder**:
 
@@ -187,23 +187,20 @@ cp .env.example .env
 
 docker compose -f docker-compose.airflow.yml up -d --build
 docker exec asp-airflow airflow dags list-import-errors        # ✅ empty = DAGs parsed cleanly
-docker exec asp-airflow airflow dags list | findstr asp        # -> asp_pipeline, asp_retraining
+docker exec asp-airflow airflow dags list | findstr asp        # -> asp_retraining (the only DAG)
 ```
 
 Get the admin password (user is `admin`) and open the UI:
 
 ```bash
-docker exec asp-airflow cat /opt/airflow/simple_auth_manager_passwords.json.generated
-# older builds instead: docker exec asp-airflow cat /opt/airflow/standalone_admin_password.txt
+docker exec asp-airflow cat /opt/airflow/standalone_admin_password.txt
+# newer builds instead: docker exec asp-airflow cat /opt/airflow/simple_auth_manager_passwords.json.generated
 ```
 
-Open **http://localhost:8080** (user `admin`, that password). Enable **`asp_pipeline`**, click
-**▶ Trigger DAG**, and watch `download_data → make_dataset → train_evaluate` go green. Click any
-task → **Logs** to read its output.
+Open **http://localhost:8080** (user `admin`, that password). The project ships a **single DAG,
+`asp_retraining`** — run it in Step 5.
 
-✅ **Expected:** three green tasks; a fresh model appears in the host `artifacts/` folder. A new
-run also appears on the team's DagsHub **Experiments** tab (train logs to MLflow — needs the token in
-Tier 3 below; without it, `train_evaluate` fails with a DagsHub OAuth error).
+✅ **Expected:** the UI loads and `asp_retraining` is listed with no import errors.
 
 > **If a task goes red,** the cause is almost always one of five known local-run issues (UID/GID,
 > DNS, `mkdir`, MLflow token, DVC creds). The phase-8 guide's **§8.9 "Real local-run playbook"** has
@@ -218,12 +215,17 @@ Same Airflow instance. Enable **`asp_retraining`** and trigger it.
 > time, not mounted): `docker compose --profile build-only build`. Skip this and the compare/promote
 > tasks fail with `No module named services.training.promote`.
 
-✅ **Expected:** these run for real and go green — `check_and_ingest_data`, `build_dataset`,
-`validate_data`, `train_and_log_mlflow` (train + log + **register** candidate), and now also
+✅ **Expected:** all steps run for real and go green — `check_and_ingest_data`, `build_dataset`,
+`validate_data`, `train_and_log_mlflow` (train + log + **register** candidate),
 `compare_against_champion` + `promote_to_production` (real MLflow registry compare + promote, "Option
-B"). Only `reload_fastapi` is still a no-op placeholder (needs a backend reload endpoint). Open
-`validate_data` → **Logs** for `[VALIDATION] PASS: X_train=(...)`, and `compare_against_champion` →
-**Logs** for the `candidate v… is BETTER/NOT better than current production …` verdict.
+B"), and `reload_fastapi` (POSTs `POST /api/v1/model/reload` — **lenient**: logs a warning and still
+passes if the backend isn't running). Open `validate_data` → **Logs** for
+`[VALIDATION] PASS: X_train=(...)`, and `compare_against_champion` → **Logs** for the
+`candidate v… is BETTER/NOT better than current production …` verdict.
+
+> To see `reload_fastapi` actually reload: run the backend (`docker compose up -d backend`, mapped to
+> host :8000) and set `FASTAPI_RELOAD_URL=http://host.docker.internal:8000/api/v1/model/reload` in
+> `infra/airflow/.env`. The task log then shows `reload -> 200`.
 
 Three tasks need your DagsHub token (Tier 3 below): `train_and_log_mlflow`,
 `compare_against_champion`, and `promote_to_production` (all hit MLflow), plus `version_dataset_dvc`
@@ -300,6 +302,6 @@ The Airflow feature is on branch **`feature/airflow-orchestration`**, staged but
 | 4 API | 1 | `curl /api/v1/health` → healthy JSON |
 | 5 containers | 2 | `docker compose up -d backend` → healthy |
 | 6 CI checks | 2 | smoke test prints `OK` |
-| 8 Airflow | 2 | trigger `asp_pipeline` → 3 green tasks |
+| 8 Airflow | 2 | trigger `asp_retraining` → tasks go green |
 | 8 retraining | 2–3 | trigger `asp_retraining` → green (DVC step needs Tier 3) |
 | DVC | 3 | `dvc pull` → data + model fetched |

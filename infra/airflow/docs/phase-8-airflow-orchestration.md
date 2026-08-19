@@ -83,11 +83,17 @@ infra/airflow/
 ├── Dockerfile.airflow            # Airflow image = official image + the Docker provider
 ├── docker-compose.airflow.yml   # one container running `airflow standalone`
 ├── dags/
-│   └── asp_pipeline_dag.py       # the DAG (3 DockerOperator tasks)
+│   └── asp_retraining_dag.py     # the project's single DAG (full retraining pipeline)
 ├── .env.example                  # HOST_PROJECT_ROOT + image tags
 ├── .gitignore                    # ignore local runtime state (logs, db, password)
 └── README.md                     # quickstart + troubleshooting
 ```
+
+> **One DAG.** The project ships a single DAG, **`asp_retraining`** (detailed in §8.7). To learn the
+> Airflow pattern gently, the next few sections use a **minimal 3-task illustration**
+> (download → make_dataset → train) — the same `DockerOperator` pattern `asp_retraining` uses, just
+> smaller. The illustration is teaching-only; the hands-on steps (§8.4–8.5) trigger the real
+> `asp_retraining` DAG.
 
 ### `Dockerfile.airflow` — a minimal Airflow image
 
@@ -147,7 +153,7 @@ Read it against what you learned in Phase 5 and it's all familiar:
 - **The credential passthroughs** (`DAGSHUB_USER_TOKEN`, `AWS_ACCESS_KEY_ID`,
   `AWS_SECRET_ACCESS_KEY`, `FASTAPI_RELOAD_URL`) are read from `.env` and injected into the Airflow
   container, which then forwards the relevant ones into the sibling task containers. They default to
-  **empty**, so the core `asp_pipeline` runs without any of them; they only matter for the retraining
+  **empty**, so the pipeline's core data tasks run without any of them; they only matter for the
   DAG's train (MLflow) and DVC-push tasks. See §8.7 and §8.9 for exactly which task uses which.
   **These are recreate-time values:** after you edit `.env`, you must re-run
   `docker compose ... up -d` so the container picks up the new values.
@@ -155,7 +161,11 @@ Read it against what you learned in Phase 5 and it's all familiar:
 Notice what is **not** here: no Postgres, no Redis, no separate scheduler service. That's the
 "minimal" choice — one container, easy to read.
 
-### `dags/asp_pipeline_dag.py` — the DAG itself
+### A minimal DAG — the pattern (illustration)
+
+> This 3-task example is a **teaching illustration** of the `DockerOperator` pattern — it is not a
+> file in the repo. The project's actual DAG is `asp_retraining` (§8.7), which applies this exact
+> pattern to the full pipeline.
 
 This is the heart of the phase. Read it in three parts.
 
@@ -207,7 +217,7 @@ mount that isn't needed here, the second cleans up finished containers so they d
 
 ```python
 with DAG(
-    dag_id="asp_pipeline",
+    dag_id="asp_example",   # illustration only — the real DAG is asp_retraining
     start_date=datetime(2024, 1, 1),
     schedule=None,        # manual trigger (put a cron string here to run on a schedule)
     catchup=False,
@@ -242,7 +252,7 @@ with DAG(
 Everything you need to understand a DAG is on this screen:
 
 - **`with DAG(...) as dag:`** — the DAG is a *context*; any task created inside it belongs to it.
-- **`dag_id="asp_pipeline"`** — the name you'll see and trigger in the UI.
+- **`dag_id=...`** — the name that appears in the UI (in the real DAG it's `asp_retraining`).
 - **`schedule=None`** — the DAG runs only when you trigger it (great for learning). Change it to a
   cron string like `"0 2 * * 1"` to retrain every Monday at 02:00 — that one edit turns this into an
   automated retraining pipeline.
@@ -352,13 +362,13 @@ Open **http://localhost:8080**, log in as `admin` with that password. (It persis
 
 ### Step 3 — run the pipeline
 
-In the UI: find **`asp_pipeline`**, toggle it **On**, then click **▶ Trigger DAG**. Watch the three
+In the UI: find **`asp_retraining`**, toggle it **On**, then click **▶ Trigger DAG**. Watch the
 boxes go from white → bright green (running) → dark green (success). Click any task → **Logs** to see
 the exact output of that pipeline step (the same logs you'd see running it by hand). Or from a
 terminal:
 
 ```powershell
-docker exec asp-airflow airflow dags trigger asp_pipeline
+docker exec asp-airflow airflow dags trigger asp_retraining
 ```
 
 **Expected result:** three successful tasks, and — on the host — freshly written files in
@@ -394,17 +404,17 @@ docker compose -f docker-compose.airflow.yml ps
 docker exec asp-airflow airflow dags list-import-errors
 
 # 4) Is the DAG registered and visible?
-docker exec asp-airflow airflow dags list | grep asp_pipeline
+docker exec asp-airflow airflow dags list | grep asp_retraining
 
 # 5) After a run, are all three tasks "success"?
-#    (get <run_id> from the UI, or: airflow dags list-runs -d asp_pipeline)
-docker exec asp-airflow airflow tasks states-for-dag-run asp_pipeline <run_id>
+#    (get <run_id> from the UI, or: airflow dags list-runs -d asp_retraining)
+docker exec asp-airflow airflow tasks states-for-dag-run asp_retraining <run_id>
 ```
 
 Interpreting the results:
 
 - **Import errors (step 3)** are the most common beginner issue — a typo or bad import in the DAG
-  file. The command prints the traceback and the file; fix `dags/asp_pipeline_dag.py` and Airflow
+  file. The command prints the traceback and the file; fix the DAG file under `dags/` and Airflow
   reloads it automatically within ~30 seconds (no restart needed).
 - **A task fails** — open it in the UI → **Logs**. The message tells you which class of problem:
   `image not found` (build the images), `Cannot connect to the Docker daemon` (socket/permissions),
@@ -435,19 +445,19 @@ You understand Phase 8 when you can explain:
 
 ---
 
-## 8.7 The full retraining DAG (`asp_retraining`)
+## 8.7 The retraining DAG (`asp_retraining`) — the project's single DAG
 
-The 3-task `asp_pipeline` above is the *minimal core*. The real production goal is a **retraining
-pipeline** with eight steps — ingest new data, version it, validate it, retrain, compare against the
-current best model, promote the winner, tell the API to reload, and alert on success/failure. That
-lives in `infra/airflow/dags/asp_retraining_dag.py` as the `asp_retraining` DAG.
+The 3-task flow above was a *minimal illustration* of the pattern. The project's actual (and only)
+DAG is a full **retraining pipeline** — ingest new data, version it, validate it, retrain, compare
+against the current best model, promote the winner, tell the API to reload, and alert on
+success/failure. It lives in `infra/airflow/dags/asp_retraining_dag.py` as the `asp_retraining` DAG.
 
 The honest reality of a **group project**: originally several of these steps depended on a
-teammate's MLflow work, so they shipped as clearly-marked placeholders. That teammate has since
-merged the **MLflow model registry** (`register_model`, `promote_if_better`, `load_registered_model`
-in `common/utils/mlflow.py`), so steps 4, 5, and 6 are now **fully implemented**. Only **step 7**
-(tell the API to reload) remains a placeholder — it needs a reload endpoint the backend does not
-expose yet. The DAG still runs end-to-end today and now performs a *real* champion/challenger
+teammate's MLflow work, so they shipped as clearly-marked placeholders. Since then the **MLflow model
+registry** (`register_model`, `promote_if_better`, `load_registered_model` in
+`common/utils/mlflow.py`) and the backend **reload endpoint** (`POST /api/v1/model/reload`) both
+landed, so **all steps (1–8) are now implemented**. The DAG runs end-to-end today and performs a
+*real* champion/challenger
 promotion in the shared registry.
 
 > **Design note — "Option B" (promotion governed by the orchestrator).** The training step
@@ -469,8 +479,8 @@ promotion in the shared registry.
 | 4 | `train_and_log_mlflow` | `DockerOperator` runs `services.training.train` (train + log + **register** candidate) | ✅ implemented |
 | 5 | `compare_against_champion` | `DockerOperator` runs `services.training.promote compare` (read-only verdict + decision file) | ✅ implemented |
 | 6 | `promote_to_production` | `DockerOperator` runs `services.training.promote promote` (reuses `promote_if_better`) | ✅ implemented |
-| 7 | `reload_fastapi` | `PythonOperator` stub (optional HTTP POST) | 🟡 placeholder (needs endpoint) |
-| 8 | success/failure alerts | DAG `on_success_callback` / `on_failure_callback` | ✅ implemented |
+| 7 | `reload_fastapi` | `PythonOperator` POSTs `/api/v1/model/reload` (lenient) | ✅ implemented |
+| 8 | success/failure alerts | `on_success_callback` / `on_failure_callback` → **Slack** (+ logging) | ✅ implemented |
 
 \* needs DagsHub credentials (see below).
 
@@ -490,16 +500,18 @@ It bakes in *no* project code — the DAG bind-mounts the repo/data into it at r
 
 **(b) `PythonOperator` — logic that runs *inside* Airflow.** Not every task launches a container; a
 `PythonOperator` runs a Python function in the Airflow process itself. That's the other core Airflow
-operator besides `DockerOperator`. Here it's used only for **step 7** (`reload_fastapi`), which stays
-a placeholder — a small function with a `TODO` and a `log.info`, returning cleanly so the DAG stays
-green until the backend exposes a reload endpoint:
+operator besides `DockerOperator`. Here it's used for **step 7** (`reload_fastapi`): after promotion,
+it POSTs to the backend's reload endpoint so the running API serves the new champion without a
+restart. It's **lenient** — if `FASTAPI_RELOAD_URL` is unset or the backend is unreachable, it logs a
+warning and lets the DAG succeed (the model still goes live on the backend's next start):
 
 ```python
 def _reload_fastapi(**context) -> None:
     if not FASTAPI_RELOAD_URL:
-        log.info("STEP 7 (placeholder): FASTAPI_RELOAD_URL not set; nothing to reload yet.")
+        log.info("STEP 7: FASTAPI_RELOAD_URL not set — skipping reload.")
         return
-    requests.post(FASTAPI_RELOAD_URL, timeout=10)   # once the endpoint exists
+    resp = requests.post(FASTAPI_RELOAD_URL, timeout=10)   # POST /api/v1/model/reload
+    log.info(f"STEP 7: reload -> {resp.status_code}")
 ```
 
 **(c) Promotion as two DockerOperator steps (Option B).** Steps 5 and 6 run in the *training image*
@@ -535,7 +547,8 @@ teammate's registry helpers as visible steps.
   new version's `production` alias and moves the old one to `fallback` (rollback safety); otherwise it
   leaves production unchanged. This is the real registry write — you'll see the alias move on DagsHub.
 - **Alerts (step 8)** are DAG-level callbacks: `_on_success` / `_on_failure` log a clear message and
-  mark exactly where an email/Slack/Teams notification would hook. Airflow calls them automatically —
+  **POST it to Slack** via `_notify_slack` (set `SLACK_WEBHOOK_URL`; lenient — logs only if unset).
+  Airflow calls them automatically —
   no extra task needed.
 
 ### A deliberate ordering choice
@@ -581,7 +594,7 @@ docker compose -f docker-compose.airflow.yml up -d --build
 docker exec asp-airflow airflow dags list-import-errors        # should be empty
 
 # 5) UI: enable + trigger "asp_retraining"; watch all 8 boxes go green.
-#    Steps 5 & 6 now do REAL registry compare + promote; only step 7 (reload) is a no-op.
+#    All steps are real: 5 & 6 compare + promote; 7 POSTs the backend reload endpoint.
 ```
 
 > **Get a DagsHub token:** dagshub.com → your avatar → **Settings → Tokens** → copy your default
@@ -637,15 +650,19 @@ current production …`), then `promote_to_production` → **Logs** for `promote
 candidate is promoted by default. Re-run the DAG a few times and watch the aliases move as better
 models win — that's the champion/challenger loop working end-to-end.
 
-### Handing off the last placeholder
+### All steps implemented
 
-- **Steps 4–6 are done.** Training registers the candidate; the DAG's `compare` and `promote` steps
-  (via `services.training.promote`) do the real champion/challenger decision and alias promotion,
-  reusing the teammate's `promote_if_better`. Promotion is already **conditional** — the candidate
-  only reaches `production` if it beats the current champion.
-- **Step 7 (reload) is the only placeholder left.** Once the backend exposes a reload endpoint (e.g.
-  `POST /model/reload` that calls `prediction_service.load_model(force_reload=True)`), set
-  `FASTAPI_RELOAD_URL` in `infra/airflow/.env` and `reload_fastapi` will POST to it automatically.
+- **Steps 4–6.** Training registers the candidate; the DAG's `compare` and `promote` steps (via
+  `services.training.promote`) do the real champion/challenger decision and alias promotion, reusing
+  `promote_if_better`. Promotion is **conditional** — the candidate only reaches `production` if it
+  beats the current champion.
+- **Step 7 (reload).** The backend now exposes `POST /api/v1/model/reload`
+  (`services/backend/src/routes/reload.py` → `load_model(force_reload=True)`). Set
+  `FASTAPI_RELOAD_URL` in `infra/airflow/.env` (e.g.
+  `http://host.docker.internal:8000/api/v1/model/reload`) and, with the backend running,
+  `reload_fastapi` POSTs to it so the promoted model is served immediately. It's **lenient**: if the
+  backend is unreachable it logs a warning and the DAG still succeeds (the model goes live on the
+  backend's next start).
 
 ### Tests for this feature
 
@@ -690,12 +707,14 @@ uv run pytest infra/airflow/tests/test_dags.py -q
 
 ## 8.8 Where to take it next
 
-1. **Schedule it.** Change `schedule=None` to a cron string (e.g. `"0 2 * * 1"`) to retrain weekly —
-   the course's "retraining automation" deliverable.
-2. **Finish step 7.** Add the backend reload endpoint and wire `FASTAPI_RELOAD_URL` so a freshly
-   promoted model is served without a restart.
-3. **Wire real alerts.** Turn the step-8 callback log lines into email/Slack notifications.
-4. **Harden the gates.** Add a hard minimum-metric floor in the `compare` step (not just "better than
+> The pipeline is now fully implemented and **scheduled yearly** (`schedule="0 0 1 1 *"`) with
+> **Slack alerts** (step 8). The ideas below are optional hardening.
+
+1. **Make step 7 strict (optional).** The reload is lenient today; change the `log.warning` to a
+   `raise` if you want a failed reload to fail the pipeline.
+2. **Change the cadence.** Swap the yearly cron for weekly/daily if you ingest data more often; or
+   comment `schedule` and uncomment `schedule=None` to trigger manually only.
+3. **Harden the gates.** Add a hard minimum-metric floor in the `compare` step (not just "better than
    champion"), and consider a post-promotion smoke test that calls `/predict` with a known sample.
 
 ---
@@ -771,8 +790,8 @@ docker-compose.airflow.yml up -d`.
 
 ### The 4 code fixes, and where they live
 
-Fixes **2, 3, 4** are baked into the DAG files (`dags/asp_pipeline_dag.py` and
-`dags/asp_retraining_dag.py`) and the compose file, so teammates inherit them automatically. Fixes
+Fixes **2, 3, 4** are baked into the DAG file (`dags/asp_retraining_dag.py`) and the compose file,
+so teammates inherit them automatically. Fixes
 **1** and **5** are environment/config you set locally. All four are good candidates for a small
 **follow-up PR** so nobody rediscovers them — plus the two suggested source improvements above
 (training-service UID defaults; offline MLflow fallback).

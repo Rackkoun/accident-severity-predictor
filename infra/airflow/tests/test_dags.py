@@ -49,15 +49,10 @@ def test_dags_import_without_errors(dagbag: DagBag) -> None:
     assert dagbag.import_errors == {}, dagbag.import_errors
 
 
-def test_both_dags_registered(dagbag: DagBag) -> None:
-    assert {"asp_pipeline", "asp_retraining"}.issubset(set(dagbag.dag_ids))
-
-
-def test_pipeline_tasks_and_wiring(dagbag: DagBag) -> None:
-    dag = dagbag.get_dag("asp_pipeline")
-    assert set(dag.task_ids) == {"download_data", "make_dataset", "train_evaluate"}
-    assert dag.get_task("make_dataset").upstream_task_ids == {"download_data"}
-    assert dag.get_task("train_evaluate").upstream_task_ids == {"make_dataset"}
+def test_retraining_dag_registered(dagbag: DagBag) -> None:
+    # The project ships a single DAG: asp_retraining.
+    assert "asp_retraining" in set(dagbag.dag_ids)
+    assert "asp_pipeline" not in set(dagbag.dag_ids)
 
 
 def test_retraining_tasks_present(dagbag: DagBag) -> None:
@@ -66,7 +61,7 @@ def test_retraining_tasks_present(dagbag: DagBag) -> None:
 
 
 def test_retraining_promotion_is_dag_governed(dagbag: DagBag) -> None:
-    """Option B: train -> compare -> promote -> reload, and validate before version."""
+    """Option B: train -> compare -> promote -> reload."""
     dag = dagbag.get_dag("asp_retraining")
     assert dag.get_task("compare_against_champion").upstream_task_ids == {"train_and_log_mlflow"}
     assert dag.get_task("promote_to_production").upstream_task_ids == {"compare_against_champion"}
@@ -75,7 +70,6 @@ def test_retraining_promotion_is_dag_governed(dagbag: DagBag) -> None:
     assert dag.get_task("version_dataset_dvc").upstream_task_ids == {"validate_data"}
 
 
-def test_dags_are_manually_triggered(dagbag: DagBag) -> None:
-    """Both DAGs are manual (schedule=None) — no accidental scheduled runs."""
-    for dag_id in ("asp_pipeline", "asp_retraining"):
-        assert dagbag.get_dag(dag_id).schedule_interval is None
+def test_retraining_scheduled_yearly(dagbag: DagBag) -> None:
+    """asp_retraining runs once a year (00:00 on 1 Jan), matching the annual data batch."""
+    assert dagbag.get_dag("asp_retraining").schedule_interval == "0 0 1 1 *"

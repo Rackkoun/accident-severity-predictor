@@ -4,19 +4,9 @@ A **self-contained** Apache Airflow setup that orchestrates the project's existi
 DVC pipeline. It runs independently of the main app — it does **not** touch
 `docker-compose.yaml`, `dvc.yaml`, or any service code. Lives under `infra/airflow/`.
 
-There are **two DAGs**:
-
-**1. `asp_pipeline` (minimal core)** — `dags/asp_pipeline_dag.py`. Three steps, each launching
-one of the project's **existing** images as a short-lived container:
-
-```
-download_data  ->  make_dataset  ->  train_evaluate
- (asp-backend)     (asp-training)     (asp-training)
-```
-
-**2. `asp_retraining` (full pipeline)** — `dags/asp_retraining_dag.py`. The complete 8-step
-retraining flow. In-scope steps are implemented; steps that depend on a teammate's component
-are clearly-marked placeholders that succeed as no-ops until wired in:
+There is **one DAG**: **`asp_retraining`** (`dags/asp_retraining_dag.py`) — the complete
+retraining flow, all steps implemented. Each step launches one of the project's images as a
+short-lived container (the final reload step calls the backend's reload endpoint):
 
 | Step | Task | Status |
 |------|------|--------|
@@ -26,8 +16,12 @@ are clearly-marked placeholders that succeed as no-ops until wired in:
 | 4 | `train_and_log_mlflow` — train + log + register candidate | ✅ implemented |
 | 5 | `compare_against_champion` — `promote compare` (read-only verdict) | ✅ implemented |
 | 6 | `promote_to_production` — `promote promote` (reuses `promote_if_better`) | ✅ implemented |
-| 7 | `reload_fastapi` | 🟡 placeholder (needs a backend reload endpoint) |
-| 8 | success/failure alerts | ✅ implemented (DAG callbacks) |
+| 7 | `reload_fastapi` — POSTs `/api/v1/model/reload` | ✅ implemented (set `FASTAPI_RELOAD_URL`) |
+| 8 | success/failure alerts — **Slack** (+ logging) | ✅ implemented (set `SLACK_WEBHOOK_URL`) |
+
+> **Schedule:** the DAG runs **once a year (00:00 on 1 Jan)** to match the annual BAAC batch
+> (`schedule="0 0 1 1 *"`). To trigger manually only, comment that line and uncomment `schedule=None`
+> in the DAG. **Alerts** post to Slack when `SLACK_WEBHOOK_URL` is set (lenient — logs only if unset).
 
 > **Promotion = "Option B":** training only trains + logs + **registers** a candidate; the DAG
 > governs promotion via `services.training.promote` (compare → promote, reusing the tested
@@ -37,9 +31,10 @@ are clearly-marked placeholders that succeed as no-ops until wired in:
 > The retraining DAG runs `validate_data` **before** `version_dataset_dvc` on purpose (don't
 > version data that failed QA). Swap those two lines in the DAG to match a strict 2-before-3 order.
 
-Full explanation & a validated local-run playbook: see `infra/airflow/docs/phase-8-airflow-orchestration.md`
-(§8.9 lists the five issues a fresh Windows/Docker-Desktop run hits and their fixes) and
-`infra/airflow/docs/HOW-TO-VERIFY.md`.
+Learning guides (what/why + guided read + do-it-yourself steps + Windows notes):
+- `infra/airflow/docs/phase-8-airflow-orchestration.md` — the DAG, Option B promotion, and the
+  validated local-run playbook (§8.9 lists the five issues a fresh Windows/Docker-Desktop run hits).
+- `infra/airflow/docs/HOW-TO-VERIFY.md` — the run-it-yourself checklist.
 
 ---
 
@@ -81,8 +76,8 @@ docker compose -f docker-compose.airflow.yml logs airflow | grep -i "password"
 # 4) Open the UI
 #    http://localhost:8080     user: admin     password: (from step 3)
 
-# 5) Run a pipeline
-#    In the UI: enable the "asp_pipeline" (or "asp_retraining") DAG, then click ▶ "Trigger DAG".
+# 5) Run the pipeline
+#    In the UI: enable the "asp_retraining" DAG, then click ▶ "Trigger DAG".
 #    Watch the tasks go green. Click a task -> Logs to see its output.
 
 # 6) Stop Airflow (keeps your data/artifacts on the host)
@@ -92,7 +87,7 @@ docker compose -f docker-compose.airflow.yml down
 Trigger from the command line instead of the UI, if you prefer:
 
 ```bash
-docker exec asp-airflow airflow dags trigger asp_pipeline
+docker exec asp-airflow airflow dags trigger asp_retraining
 ```
 
 ---
@@ -113,7 +108,7 @@ docker exec asp-airflow airflow dags list-import-errors
 docker exec asp-airflow airflow dags list | grep asp
 
 # e) After a run: every task should be "success"
-docker exec asp-airflow airflow tasks states-for-dag-run asp_pipeline <run_id>
+docker exec asp-airflow airflow tasks states-for-dag-run asp_retraining <run_id>
 ```
 
 If `list-import-errors` shows anything, a DAG file has a problem — read the message,
@@ -144,7 +139,9 @@ fix it under `dags/`, and Airflow reloads it automatically within ~30s.
 
 - No MLflow logging (that's a teammate's feature; a hook is marked in the retraining DAG's
   `train_and_log_mlflow` task, and steps 5–6 are placeholders for later).
-- No FastAPI reload endpoint (step 7 is a placeholder until the backend exposes one).
-- The `asp_pipeline` DAG needs no `dvc pull` — it regenerates everything from the public data
+- Step 7 posts to the backend's `POST /api/v1/model/reload`; it's **lenient** — if the backend
+  isn't reachable it logs a warning and the DAG still succeeds (the model goes live on the
+  backend's next start). Set `FASTAPI_RELOAD_URL` in `.env` and run the backend to enable it.
+- The DAG needs no `dvc pull` — it regenerates everything from the public data
   source. To version the produced model, the retraining DAG's `version_dataset_dvc` runs
   `dvc push` (with creds), or run `uv run dvc push` from the repo root manually.

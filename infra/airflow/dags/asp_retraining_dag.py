@@ -1,11 +1,10 @@
 """
 ASP RETRAINING DAG — the full production retraining pipeline (8 steps).
 
-This is the "target" pipeline (the simpler `asp_pipeline_dag.py` is the minimal core).
-It lays out ALL eight retraining steps in order. Steps fully in the Airflow owner's
-lane are IMPLEMENTED; steps that depend on a teammate's component (MLflow, the FastAPI
-reload endpoint) are clearly-marked PLACEHOLDER tasks that succeed as no-ops until the
-teammate plugs their logic in — so the DAG runs end-to-end today and shows the whole flow.
+This is the project's single DAG — it lays out the full retraining pipeline in order.
+Most steps are IMPLEMENTED; the API-reload step depends on a backend endpoint that does
+not exist yet, so it is a clearly-marked PLACEHOLDER that succeeds as a no-op until the
+endpoint is added — the DAG runs end-to-end today and shows the whole flow.
 
 Step map (your 8-task spec):
   1. check_and_ingest_data     -> ingest new yearly data            [IMPLEMENTED, Docker]
@@ -15,8 +14,11 @@ Step map (your 8-task spec):
   4. train_and_log_mlflow      -> train + evaluate + REGISTER cand. [IMPLEMENTED, Docker]
   5. compare_against_champion  -> compare candidate vs champion     [IMPLEMENTED, Docker (promote compare)]
   6. promote_to_production     -> promote in MLflow Registry        [IMPLEMENTED, Docker (promote promote)]
-  7. reload_fastapi            -> tell the API to load new model    [PLACEHOLDER — needs reload endpoint]
-  8. success/failure alerts    -> logging + alert hooks             [IMPLEMENTED as callbacks]
+  7. reload_fastapi            -> tell the API to load new model    [IMPLEMENTED — POSTs /api/v1/model/reload]
+  8. success/failure alerts    -> Slack notifications (+ logging)   [IMPLEMENTED as callbacks]
+
+Scheduled to run once a year (00:00 on 1 January) to match the annual BAAC data batch;
+comment `schedule` / uncomment `schedule=None` in the DAG below to trigger manually only.
 
 Promotion design (Option B): the training step only trains + logs + REGISTERS a
 candidate model version. The DAG then GOVERNS promotion as two explicit steps that
@@ -64,8 +66,11 @@ VENV_PYTHON = "/app/.venv/bin/python"  # interpreter inside the asp-backend / as
 AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID", "")
 AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY", "")
 
-# Where the running FastAPI backend exposes a "reload the model" endpoint (does not exist yet).
+# Where the running FastAPI backend exposes its "reload the model" endpoint (STEP 7).
 FASTAPI_RELOAD_URL = os.environ.get("FASTAPI_RELOAD_URL", "")
+
+# Slack incoming-webhook URL for success/failure alerts (STEP 8). Empty -> alerts log only.
+SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL", "")
 
 # Mounts for tasks that run the project images (data/ + artifacts/, same as the app).
 APP_MOUNTS = [
@@ -90,37 +95,69 @@ default_args = {
 
 
 # ---------------------------------------------------------------------------
-# Placeholder callable (step 7) — teammate plugs real logic in here
-# (Steps 5 & 6 are now REAL DockerOperator tasks running services.training.promote.)
+# Step 7 callable — tell the running backend to serve the newly promoted model.
+# (Steps 5 & 6 are REAL DockerOperator tasks running services.training.promote.)
 # ---------------------------------------------------------------------------
 def _reload_fastapi(**context) -> None:
-    """STEP 7 — signal the running FastAPI backend to load the newly promoted model."""
+    """STEP 7 — signal the running FastAPI backend to reload the newly promoted model.
+
+    POSTs to the backend's reload endpoint (POST /api/v1/model/reload), which force-
+    reloads the current 'production' model from the MLflow registry — so the promoted
+    champion is served without restarting the API. Set FASTAPI_RELOAD_URL in
+    infra/airflow/.env (e.g. http://host.docker.internal:8000/api/v1/model/reload).
+
+    Behaviour is LENIENT: if the URL is unset or the backend is unreachable, we log a
+    warning and let the DAG succeed (the model still goes live on the backend's next
+    start). Switch the `log.warning` below to `raise` if you want a failed reload to
+    fail the pipeline.
+    """
     if not FASTAPI_RELOAD_URL:
-        log.info("STEP 7 (placeholder): FASTAPI_RELOAD_URL not set.")
-        log.info("  -> backend owner: add a reload endpoint, then set FASTAPI_RELOAD_URL in infra/airflow/.env.")
+        log.info("STEP 7: FASTAPI_RELOAD_URL not set — skipping reload.")
+        log.info("  -> set it in infra/airflow/.env to serve the new model without a backend restart.")
         return
     try:
         import requests  # available in the Airflow image
 
         resp = requests.post(FASTAPI_RELOAD_URL, timeout=10)
         log.info(f"STEP 7: reload signal -> {FASTAPI_RELOAD_URL} returned {resp.status_code}")
-    except Exception as exc:  # noqa: BLE001 - placeholder should never fail the DAG
-        log.warning(f"STEP 7: reload call failed (endpoint may not exist yet): {exc}")
+    except Exception as exc:  # noqa: BLE001 - lenient: a failed reload must not fail the DAG
+        log.warning(f"STEP 7: reload call failed (is the backend running on :8000?): {exc}")
 
 
 # ---------------------------------------------------------------------------
-# Alerting (step 8) — DAG-level success/failure callbacks
+# Alerting (step 8) — DAG-level success/failure callbacks -> Slack
 # ---------------------------------------------------------------------------
+def _notify_slack(text: str) -> None:
+    """POST a message to a Slack incoming webhook.
+
+    LENIENT: if SLACK_WEBHOOK_URL is unset or Slack is unreachable, we just log and
+    move on — alerting must never fail the pipeline. Create a webhook at
+    https://api.slack.com/messaging/webhooks and put its URL in SLACK_WEBHOOK_URL.
+    """
+    if not SLACK_WEBHOOK_URL:
+        log.info(f"ALERT (Slack skipped — no SLACK_WEBHOOK_URL): {text}")
+        return
+    try:
+        import requests  # available in the Airflow image
+
+        resp = requests.post(SLACK_WEBHOOK_URL, json={"text": text}, timeout=10)
+        log.info(f"ALERT -> Slack returned {resp.status_code}")
+    except Exception as exc:  # noqa: BLE001 - alerting must never fail the DAG
+        log.warning(f"ALERT: Slack notification failed: {exc}")
+
+
 def _on_success(context) -> None:
-    log.info(f"ALERT ok: DAG '{context['dag'].dag_id}' run '{context['run_id']}' SUCCEEDED.")
-    log.info("  -> hook email/Slack/Teams notification here.")
+    msg = f":white_check_mark: ASP retraining SUCCEEDED — run '{context['run_id']}'."
+    log.info(msg)
+    _notify_slack(msg)
 
 
 def _on_failure(context) -> None:
     ti = context.get("task_instance")
     where = ti.task_id if ti else "unknown"
-    log.error(f"ALERT fail: DAG '{context['dag'].dag_id}' run '{context['run_id']}' FAILED at task '{where}'.")
-    log.error("  -> hook email/Slack/Teams alert here.")
+    msg = f":x: ASP retraining FAILED at task '{where}' — run '{context['run_id']}'."
+    log.error(msg)
+    _notify_slack(msg)
 
 
 # ---------------------------------------------------------------------------
@@ -131,8 +168,12 @@ with DAG(
     description="Full ASP retraining pipeline: ingest -> validate -> version -> train -> compare -> promote -> reload.",
     default_args=default_args,
     start_date=datetime(2024, 1, 1),
-    schedule=None,  # manual trigger; set a cron (e.g. "0 2 * * 1") to retrain weekly
-    catchup=False,
+    # Retrain once a year, at 00:00 on 1 January — a new annual BAAC batch is published
+    # each year, so this matches the data cadence. To disable the schedule and trigger
+    # only manually, comment the line below and uncomment `schedule=None`.
+    schedule="0 0 1 1 *",
+    # schedule=None,
+    catchup=False,  # don't back-fill every past 1-Jan since start_date
     on_success_callback=_on_success,  # STEP 8
     on_failure_callback=_on_failure,  # STEP 8
     tags=["asp", "mlops", "retraining"],
@@ -228,7 +269,7 @@ with DAG(
         **DOCKER_COMMON,
     )
 
-    # STEP 7 — signal FastAPI to reload the new model (placeholder; needs a reload endpoint).
+    # STEP 7 — signal FastAPI to reload the new model (POSTs to /api/v1/model/reload).
     reload_fastapi = PythonOperator(
         task_id="reload_fastapi",
         python_callable=_reload_fastapi,
