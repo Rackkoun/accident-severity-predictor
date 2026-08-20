@@ -17,8 +17,8 @@ services:
         # DOCKER_GID: ${DOCKER_GID}
     image: asp-backend:latest
     container_name: asp-backend
-    expose:
-      - "8000"
+    ports:
+      - "8000:8000"
     volumes:
       - ./data:/app/data
       - ./artifacts:/app/artifacts
@@ -41,24 +41,6 @@ services:
     networks:
       - asp-network
 
-  nginx:
-    build:
-      context: infra/nginx
-      dockerfile: Dockerfile.nginx
-    image: asp-nginx:latest
-    container_name: asp-nginx
-    ports:
-      - "8081:443"
-    volumes:
-      - nginx_logs:/var/log/nginx
-    depends_on:
-      backend:
-        condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - asp-network
-      - nginx_logs
-
   # training service only for building an image
   training:
     build:
@@ -73,15 +55,8 @@ services:
     command: ["echo", "Training image built"]
     networks:
       - asp-network
-      - nginx_logs
 
 networks:
   asp-network:
     name: asp-network
     driver: bridge
-  nginx_logs:
-    name: nginx_logs
-    driver: bridge
-
-volumes:
-  nginx_logs:
