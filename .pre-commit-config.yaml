@@ -60,7 +60,7 @@ repos:
       name: 📝 MyPy Type Check
       entry: uv run mypy common services
       language: system
-      pass_filenames: false
+      pass_filenames: false  # only get staged .py files
 
     - id: pytest
       name: 🧪 Pytest + Coverage

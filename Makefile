@@ -1,4 +1,4 @@
-.PHONY: init-project dvc-pull train-model dvc-push run-pipeline run-backend stop-backend
+.PHONY: init-project dvc-pull train-model dvc-push run-pipeline run-backend stop-backend rm-pycache
 
 
 # 1. Run this once after cloning or pulling to install all dependencies locally
@@ -25,3 +25,7 @@ dvc-push:
 run-pipeline:
 	uv run dvc repro
 	uv run dvc push
+
+# extra or help func
+rm-pycache:
+	find . -regex '^.*\(__pycache__\|\.py[co]\)$' -delete
