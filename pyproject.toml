@@ -137,7 +137,7 @@ exclude = [                             # exclure non-source dirs
 
 [[tool.mypy.overrides]]
 module = [
-    "sklearn.*", "joblib", "matplotlib.*", "pandas.*",
+    "sklearn.*", "joblib", "matplotlib.*", "pandas.*", "evidently.*",
 ]
 ignore_missing_imports = true
 
@@ -147,6 +147,7 @@ module = [
     "common.tests.*",
     "services.training.tests.*",
     "services.backend.tests.*",
+    "services.monitoring.tests.*",
 ]
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
@@ -158,6 +159,7 @@ testpaths = [
     "common/tests",
     "services/training/tests",
     "services/backend/tests",
+    "services/monitoring/tests",
     "infra/airflow/tests",
 ]
 pythonpath = ["."]

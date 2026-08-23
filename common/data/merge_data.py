@@ -135,3 +135,35 @@ def save_datasets(
     for df, filename in zip([X_train, X_test, y_train, y_test],
                              ["X_train", "X_test", "y_train", "y_test"]):
         df.to_csv(processed_data_dir / f"{filename}.csv", index=False)
+
+
+def save_drift_frames(
+        X_train: pd.DataFrame,
+        y_train: pd.Series,
+        X_test: pd.DataFrame,
+        y_test: pd.Series,
+        processed_data_dir: str | Path,
+    ) -> None:
+    """Save the PRE-normalization reference and current frames for drift detection.
+
+    Drift detection (Evidently) is only meaningful on the RAW category codes
+    (atm, col, catr, ...). The model's processed CSVs scale those columns to
+    floats, which hides the categories. So here we snapshot the frames *before*
+    normalization:
+
+      reference_raw.csv -> baseline years (the training split, e.g. 2021-2023) + grav
+      current_raw.csv   -> the new annual batch (the test split, e.g. 2024)     + grav
+
+    The target column `grav` is added back so Evidently can also check target drift.
+    """
+
+    processed_data_dir = Path(processed_data_dir)
+
+    reference = X_train.copy()
+    reference["grav"] = y_train.to_numpy()
+
+    current = X_test.copy()
+    current["grav"] = y_test.to_numpy()
+
+    reference.to_csv(processed_data_dir / "reference_raw.csv", index=False)
+    current.to_csv(processed_data_dir / "current_raw.csv", index=False)

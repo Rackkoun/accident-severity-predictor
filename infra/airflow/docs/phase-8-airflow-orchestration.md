@@ -448,9 +448,9 @@ You understand Phase 8 when you can explain:
 ## 8.7 The retraining DAG (`asp_retraining`) — the project's single DAG
 
 The 3-task flow above was a *minimal illustration* of the pattern. The project's actual (and only)
-DAG is a full **retraining pipeline** — ingest new data, version it, validate it, retrain, compare
-against the current best model, promote the winner, tell the API to reload, and alert on
-success/failure. It lives in `infra/airflow/dags/asp_retraining_dag.py` as the `asp_retraining` DAG.
+DAG is a full **retraining pipeline** — ingest new data, version it, validate it, retrain, check for
+drift, compare against the current best model, promote the winner, tell the API to reload, and alert
+on success/failure. It lives in `infra/airflow/dags/asp_retraining_dag.py` as the `asp_retraining` DAG.
 
 The honest reality of a **group project**: originally several of these steps depended on a
 teammate's MLflow work, so they shipped as clearly-marked placeholders. Since then the **MLflow model
@@ -477,6 +477,7 @@ promotion in the shared registry.
 | 3 | `validate_data` | `DockerOperator` runs `scripts/validate_data.py` in the runner image | ✅ implemented |
 | 2 | `version_dataset_dvc` | `DockerOperator` runs `dvc commit -f && dvc push` in the runner image | ✅ implemented* |
 | 4 | `train_and_log_mlflow` | `DockerOperator` runs `services.training.train` (train + log + **register** candidate) | ✅ implemented |
+| 4.5 | `detect_drift` | `DockerOperator` runs `services.monitoring.drift` (Evidently data/target drift + **F1 gate**) — see **Phase 9** | ✅ implemented |
 | 5 | `compare_against_champion` | `DockerOperator` runs `services.training.promote compare` (read-only verdict + decision file) | ✅ implemented |
 | 6 | `promote_to_production` | `DockerOperator` runs `services.training.promote promote` (reuses `promote_if_better`) | ✅ implemented |
 | 7 | `reload_fastapi` | `PythonOperator` POSTs `/api/v1/model/reload` (lenient) | ✅ implemented |

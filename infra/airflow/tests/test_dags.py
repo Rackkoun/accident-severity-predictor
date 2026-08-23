@@ -33,6 +33,7 @@ EXPECTED_RETRAINING_TASKS = {
     "validate_data",
     "version_dataset_dvc",
     "train_and_log_mlflow",
+    "detect_drift",
     "compare_against_champion",
     "promote_to_production",
     "reload_fastapi",
@@ -61,9 +62,11 @@ def test_retraining_tasks_present(dagbag: DagBag) -> None:
 
 
 def test_retraining_promotion_is_dag_governed(dagbag: DagBag) -> None:
-    """Option B: train -> compare -> promote -> reload."""
+    """Option B + drift gate: train -> detect_drift -> compare -> promote -> reload."""
     dag = dagbag.get_dag("asp_retraining")
-    assert dag.get_task("compare_against_champion").upstream_task_ids == {"train_and_log_mlflow"}
+    # drift/quality gate runs after train and before the promotion decision
+    assert dag.get_task("detect_drift").upstream_task_ids == {"train_and_log_mlflow"}
+    assert dag.get_task("compare_against_champion").upstream_task_ids == {"detect_drift"}
     assert dag.get_task("promote_to_production").upstream_task_ids == {"compare_against_champion"}
     assert dag.get_task("reload_fastapi").upstream_task_ids == {"promote_to_production"}
     # never version a dataset that failed QA

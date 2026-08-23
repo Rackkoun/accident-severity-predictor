@@ -20,6 +20,7 @@ from common.data.merge_data import (
     process_features,
     process_merged_dataset,
     save_datasets,
+    save_drift_frames,
     split_data,
 )
 from common.utils.asp_logging import get_logger
@@ -27,7 +28,12 @@ from common.utils.paths import DATA_PROCESSING_CONFIG, PROCESSED_DATA_DIR, RAW_D
 
 logger = get_logger(__name__)
 
-PROCESSED_FILES = ["X_train.csv", "X_test.csv", "y_train.csv", "y_test.csv"]
+# The train/test files the pipeline consumes, plus the raw reference/current frames
+# used by drift detection (so a rebuild also produces them).
+PROCESSED_FILES = [
+    "X_train.csv", "X_test.csv", "y_train.csv", "y_test.csv",
+    "reference_raw.csv", "current_raw.csv",
+]
 
 
 def processed_data_exists(processed_data_dir: str | Path) -> bool:
@@ -111,6 +117,11 @@ def process_data(
         df_years, exclusive_test_year=exclusive_test_year,
         test_size=test_size, random_state=random_state,
     )
+
+    # Snapshot the RAW (pre-normalization) frames for drift detection, before the
+    # features get scaled. See save_drift_frames() for why.
+    logger.info("Saving raw reference/current frames for drift detection...")
+    save_drift_frames(X_train, y_train, X_test, y_test, processed_data_dir)
 
     logger.info("Processing features...")
     X_train, X_test = process_features(X_train, X_test, normalize=normalize)
