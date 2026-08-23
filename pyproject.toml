@@ -46,6 +46,16 @@ training = [
     "seaborn>=0.13.2",
     "xgboost>=3.3.0",
 ]
+# Optional, ISOLATED group used only to run the Airflow DAG-integrity tests
+# (infra/airflow/tests/test_dags.py). NOT installed by default. Versions match the
+# asp-airflow image (infra/airflow/Dockerfile.airflow). Install with:
+#   uv sync --group airflow-tests
+# If it fails to resolve against the project's pins, don't force it — run the DAG
+# tests inside the asp-airflow container instead (it already has Airflow).
+airflow-tests = [
+    "apache-airflow==2.10.5",
+    "apache-airflow-providers-docker==3.14.1",
+]
 
 
 # === Ruff
@@ -148,6 +158,7 @@ testpaths = [
     "common/tests",
     "services/training/tests",
     "services/backend/tests",
+    "infra/airflow/tests",
 ]
 pythonpath = ["."]
 addopts = [

@@ -9,7 +9,7 @@ from typing import Any
 from fastapi import FastAPI
 
 from common.utils.asp_logging import get_logger
-from services.backend.src.routes import auth, health, predict, train
+from services.backend.src.routes import auth, health, predict, reload, train
 from services.backend.src.services.prediction_service import load_model
 
 logger = get_logger(__name__)
@@ -35,6 +35,7 @@ app = FastAPI(
     - **POST /api/v1/login** — Authenticate and get access token
     - **POST /api/v1/train** — Trigger model training (launches Docker container)
     - **POST /api/v1/predict** — Predict severity from accident features
+    - **POST /api/v1/model/reload** — Reload the current 'production' model (used after retraining promotes a new champion)
     - **GET /api/v1/health** — Check service and model status
     """,
     version="1.0.0",
@@ -45,6 +46,7 @@ app.include_router(auth.router)
 app.include_router(health.router)
 app.include_router(train.router)
 app.include_router(predict.router)
+app.include_router(reload.router)
 
 
 @app.get("/")
@@ -56,4 +58,5 @@ async def root() -> dict:
         "health": "/api/v1/health",
         "train": "/api/v1/train",
         "predict": "/api/v1/predict",
+        "reload": "/api/v1/model/reload",
     }

@@ -2,6 +2,8 @@
 training entrypoint
 """
 
+import os
+
 import mlflow
 
 from common.utils.mlflow import (
@@ -44,7 +46,7 @@ def main() -> None:
             reports_dir=REPORT_DIR,
         )
 
-        # mlflow: log run -> register model -> promote model if better
+        # mlflow: log run -> register the trained model as a new candidate version.
         model_info = log_run(
             train_out=train_out,
             eval_out=eval_out,
@@ -53,11 +55,18 @@ def main() -> None:
             model_info=model_info,
             registry_model_name=MODEL_CONFIG["model_registry_name"],
         )
-        promote_if_better(
-            registered_version=registered_version,
-            eval_out=eval_out,
-            registry_model_name=MODEL_CONFIG["model_registry_name"],
-        )
+
+        # Promotion to production is governed by the `asp_retraining` Airflow DAG
+        # (Option B): it runs compare (STEP 5) then promote (STEP 6) as explicit
+        # steps via `services.training.promote`. So training does NOT auto-promote
+        # by default. Set ASP_PROMOTE_AFTER_TRAIN=1 to also promote straight from
+        # training (e.g. if the backend `/train` path wants a self-contained flow).
+        if os.environ.get("ASP_PROMOTE_AFTER_TRAIN", "0") == "1":
+            promote_if_better(
+                registered_version=registered_version,
+                eval_out=eval_out,
+                registry_model_name=MODEL_CONFIG["model_registry_name"],
+            )
 
 
 if __name__ == "__main__":
