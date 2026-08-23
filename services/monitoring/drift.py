@@ -48,7 +48,7 @@ from __future__ import annotations
 import json
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -60,9 +60,9 @@ from common.utils.paths import DATA_PROCESSING_CONFIG, METRIC_DIR, PROCESSED_DAT
 logger = get_logger(__name__)
 
 # --- configuration ---------------------------------------------------------
-TARGET = "grav"                       # the (binary) target column
-METRIC_NAME = "f1_score"              # the metric the gate checks
-DEFAULT_F1_THRESHOLD = 0.65           # promotion is blocked below this (override via env)
+TARGET = "grav"  # the (binary) target column
+METRIC_NAME = "f1_score"  # the metric the gate checks
+DEFAULT_F1_THRESHOLD = 0.65  # promotion is blocked below this (override via env)
 
 # Drift on high-cardinality / ID-like columns (commune code `com`, coordinates
 # `lat`/`long`, ...) is both extremely slow and meaningless, so we skip any column with
@@ -78,9 +78,29 @@ CONTRACT_FILE = DRIFT_DIR / "latest_metrics.json"
 # common/data/merge_data.py — duplicated here on purpose so this module (and the tiny
 # drift image) does NOT import merge_data, which would pull in scikit-learn.
 CATEGORICAL_COLS = [
-    "place", "catu", "sexe", "secu1", "catv", "obsm", "motor", "catr", "circ",
-    "surf", "situ", "jour", "mois", "lum", "dep", "com", "agg", "int", "atm",
-    "col", "lat", "long", "hour",
+    "place",
+    "catu",
+    "sexe",
+    "secu1",
+    "catv",
+    "obsm",
+    "motor",
+    "catr",
+    "circ",
+    "surf",
+    "situ",
+    "jour",
+    "mois",
+    "lum",
+    "dep",
+    "com",
+    "agg",
+    "int",
+    "atm",
+    "col",
+    "lat",
+    "long",
+    "hour",
 ]
 
 
@@ -112,10 +132,7 @@ def reduce_for_drift(
 
     Returns the reduced (reference, current) frames and the list of dropped columns.
     """
-    keep = [
-        c for c in reference.columns
-        if c == TARGET or reference[c].nunique(dropna=True) <= MAX_CARDINALITY
-    ]
+    keep = [c for c in reference.columns if c == TARGET or reference[c].nunique(dropna=True) <= MAX_CARDINALITY]
     dropped = [c for c in reference.columns if c not in keep]
 
     ref = reference[keep]
@@ -173,7 +190,7 @@ def summarize_report(report_dict: dict[str, Any]) -> dict[str, Any]:
     }
     for metric in report_dict.get("metrics", []):
         result = metric.get("result", {}) or {}
-        if "dataset_drift" in result:                      # DataDriftPreset summary
+        if "dataset_drift" in result:  # DataDriftPreset summary
             out["dataset_drift"] = result.get("dataset_drift")
             out["n_drifted_features"] = result.get("number_of_drifted_columns")
             out["n_features"] = result.get("number_of_columns")
@@ -217,7 +234,7 @@ def build_contract(drift: dict[str, Any], f1: float | None, threshold: float, ye
         "f1_score": f1,
         "f1_threshold": threshold,
         "passed": passed,
-        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
 
 
@@ -242,11 +259,7 @@ def run(processed_dir: Path = PROCESSED_DATA_DIR, metrics_dir: Path = METRIC_DIR
     current = pd.read_csv(current_path)
 
     reference, current, dropped = reduce_for_drift(reference, current)
-    logger.info(
-        f"Drift on {reference.shape[1]} columns, "
-        f"ref={len(reference)} rows / cur={len(current)} rows "
-        f"(skipped high-cardinality: {dropped})"
-    )
+    logger.info(f"Drift on {reference.shape[1]} columns, ref={len(reference)} rows / cur={len(current)} rows (skipped high-cardinality: {dropped})")
 
     logger.info("Building Evidently drift report (data drift + target drift) ...")
     report = _build_report(reference, current)

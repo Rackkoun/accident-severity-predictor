@@ -16,19 +16,13 @@ from services.monitoring import drift
 
 def _write_metrics(dirpath, f1):
     dirpath.mkdir(parents=True, exist_ok=True)
-    (dirpath / "model_20260101000000_metrics.json").write_text(
-        json.dumps({"accuracy": 0.8, "precision": 0.7, "recall": 0.7, "f1_score": f1})
-    )
+    (dirpath / "model_20260101000000_metrics.json").write_text(json.dumps({"accuracy": 0.8, "precision": 0.7, "recall": 0.7, "f1_score": f1}))
 
 
 def _write_frames(dirpath):
     dirpath.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame({"atm": [1, 2, 1, 2], "nb_veh": [1, 2, 1, 2], "grav": [0, 1, 0, 1]}).to_csv(
-        dirpath / "reference_raw.csv", index=False
-    )
-    pd.DataFrame({"atm": [2, 2, 1, 1], "nb_veh": [2, 2, 1, 1], "grav": [1, 1, 0, 0]}).to_csv(
-        dirpath / "current_raw.csv", index=False
-    )
+    pd.DataFrame({"atm": [1, 2, 1, 2], "nb_veh": [1, 2, 1, 2], "grav": [0, 1, 0, 1]}).to_csv(dirpath / "reference_raw.csv", index=False)
+    pd.DataFrame({"atm": [2, 2, 1, 1], "nb_veh": [2, 2, 1, 1], "grav": [1, 1, 0, 0]}).to_csv(dirpath / "current_raw.csv", index=False)
 
 
 def test_categorical_features_present_only():
@@ -58,16 +52,18 @@ def test_latest_f1_none_when_missing(tmp_path):
 
 def test_reduce_for_drift_drops_high_cardinality_and_samples():
     n = 300
-    ref = pd.DataFrame({
-        "atm": [1, 2] * (n // 2),          # low cardinality -> kept
-        "com": list(range(n)),             # 300 unique -> dropped (> MAX_CARDINALITY)
-        "grav": [0, 1] * (n // 2),         # target -> always kept
-    })
+    ref = pd.DataFrame(
+        {
+            "atm": [1, 2] * (n // 2),  # low cardinality -> kept
+            "com": list(range(n)),  # 300 unique -> dropped (> MAX_CARDINALITY)
+            "grav": [0, 1] * (n // 2),  # target -> always kept
+        }
+    )
     r, c, dropped = drift.reduce_for_drift(ref, ref.copy())
     assert "com" in dropped
     assert "atm" in r.columns and "grav" in r.columns and "com" not in r.columns
 
-    big = pd.concat([ref] * 500, ignore_index=True)   # 150k rows
+    big = pd.concat([ref] * 500, ignore_index=True)  # 150k rows
     rb, cb, _ = drift.reduce_for_drift(big, big)
     assert len(rb) == drift.SAMPLE_ROWS
 
@@ -75,8 +71,7 @@ def test_reduce_for_drift_drops_high_cardinality_and_samples():
 def test_summarize_report():
     report_dict = {
         "metrics": [
-            {"result": {"dataset_drift": True, "number_of_drifted_columns": 3,
-                        "number_of_columns": 10, "share_of_drifted_columns": 0.3}},
+            {"result": {"dataset_drift": True, "number_of_drifted_columns": 3, "number_of_columns": 10, "share_of_drifted_columns": 0.3}},
             {"result": {"column_name": "grav", "drift_detected": False, "drift_score": 0.12}},
         ]
     }
@@ -89,8 +84,14 @@ def test_summarize_report():
 
 
 def test_build_contract_pass_and_fail():
-    d = {"dataset_drift": True, "drift_share": 0.2, "n_drifted_features": 2, "n_features": 10,
-         "target_drift_detected": False, "target_drift_score": 0.1}
+    d = {
+        "dataset_drift": True,
+        "drift_share": 0.2,
+        "n_drifted_features": 2,
+        "n_features": 10,
+        "target_drift_detected": False,
+        "target_drift_score": 0.1,
+    }
     assert drift.build_contract(d, 0.90, 0.65, 2024)["passed"] is True
     assert drift.build_contract(d, 0.50, 0.65, 2024)["passed"] is False
     assert drift.build_contract(d, None, 0.65, 2024)["passed"] is False
@@ -106,9 +107,9 @@ def test_run_gate_passes(mock_build, tmp_path, monkeypatch):
     monkeypatch.delenv("ASP_F1_THRESHOLD", raising=False)
 
     fake = MagicMock()
-    fake.as_dict.return_value = {"metrics": [{"result": {
-        "dataset_drift": False, "number_of_drifted_columns": 0,
-        "number_of_columns": 2, "share_of_drifted_columns": 0.0}}]}
+    fake.as_dict.return_value = {
+        "metrics": [{"result": {"dataset_drift": False, "number_of_drifted_columns": 0, "number_of_columns": 2, "share_of_drifted_columns": 0.0}}]
+    }
     mock_build.return_value = fake
 
     assert drift.run(processed_dir=proc, metrics_dir=metrics) == 0
