@@ -58,6 +58,10 @@ HOST_PROJECT_ROOT = os.environ.get("HOST_PROJECT_ROOT", "/absolute/path/to/accid
 BACKEND_IMAGE = os.environ.get("ASP_BACKEND_IMAGE", "asp-backend:latest")
 TRAINING_IMAGE = os.environ.get("ASP_TRAINING_IMAGE", "asp-training:latest")
 RUNNER_IMAGE = os.environ.get("ASP_RUNNER_IMAGE", "asp-airflow-runner:latest")
+DRIFT_IMAGE = os.environ.get("ASP_DRIFT_IMAGE", "asp-drift:latest")
+
+# F1 floor for the drift/quality gate (detect_drift). Below this, promotion is blocked.
+F1_THRESHOLD = os.environ.get("ASP_F1_THRESHOLD", "0.65")
 
 VENV_PYTHON = "/app/.venv/bin/python"  # interpreter inside the asp-backend / asp-training images
 
@@ -245,6 +249,22 @@ with DAG(
         **DOCKER_COMMON,
     )
 
+    # STEP 4.5 — drift & quality gate. Compares the new annual batch (current) vs the
+    #            baseline years (reference) with Evidently, saves an HTML + JSON report,
+    #            and FAILS (blocks promotion) if F1 on the new batch < ASP_F1_THRESHOLD.
+    #            Runs in the tiny asp-drift image; the whole repo is mounted at /app so it
+    #            can read data/processed + artifacts/metrics and write artifacts/reports/drift.
+    detect_drift = DockerOperator(
+        task_id="detect_drift",
+        image=DRIFT_IMAGE,
+        entrypoint=["python"],
+        command=["-m", "services.monitoring.drift"],
+        working_dir="/app",
+        mounts=[Mount(source=HOST_PROJECT_ROOT, target="/app", type="bind")],
+        environment={"ASP_F1_THRESHOLD": F1_THRESHOLD},
+        **DOCKER_COMMON,
+    )
+
     # STEP 5 — compare the candidate against the current champion (read-only).
     #          Logs the verdict and writes artifacts/reports/promotion_decision.json.
     compare_against_champion = DockerOperator(
@@ -284,6 +304,7 @@ with DAG(
         >> validate_data
         >> version_dataset_dvc
         >> train_and_log_mlflow
+        >> detect_drift
         >> compare_against_champion
         >> promote_to_production
         >> reload_fastapi

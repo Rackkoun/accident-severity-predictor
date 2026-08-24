@@ -14,6 +14,7 @@ short-lived container (the final reload step calls the backend's reload endpoint
 | 3 | `validate_data` — quality + shape checks | ✅ implemented (runner image) |
 | 2 | `version_dataset_dvc` — `dvc commit` + `dvc push` | ✅ implemented (needs DagsHub creds) |
 | 4 | `train_and_log_mlflow` — train + log + register candidate | ✅ implemented |
+| 4.5 | `detect_drift` — Evidently data/target drift + F1 gate (Phase 9) | ✅ implemented (asp-drift image) |
 | 5 | `compare_against_champion` — `promote compare` (read-only verdict) | ✅ implemented |
 | 6 | `promote_to_production` — `promote promote` (reuses `promote_if_better`) | ✅ implemented |
 | 7 | `reload_fastapi` — POSTs `/api/v1/model/reload` | ✅ implemented (set `FASTAPI_RELOAD_URL`) |
@@ -34,6 +35,8 @@ short-lived container (the final reload step calls the backend's reload endpoint
 Learning guides (what/why + guided read + do-it-yourself steps + Windows notes):
 - `infra/airflow/docs/phase-8-airflow-orchestration.md` — the DAG, Option B promotion, and the
   validated local-run playbook (§8.9 lists the five issues a fresh Windows/Docker-Desktop run hits).
+- `infra/airflow/docs/phase-9-drift-detection.md` — the `detect_drift` step (Evidently drift + F1
+  gate): how it works and how to run it yourself.
 - `infra/airflow/docs/HOW-TO-VERIFY.md` — the run-it-yourself checklist.
 
 ---
@@ -48,10 +51,12 @@ Learning guides (what/why + guided read + do-it-yourself steps + Windows notes):
   docker compose build backend                  # builds asp-backend:latest
   # helper image for the retraining DAG's DVC + validation tasks:
   docker build -f infra/airflow/Dockerfile.runner -t asp-airflow-runner:latest infra/airflow
+  # drift image for the retraining DAG's detect_drift task (isolated Evidently):
+  docker build -f infra/airflow/Dockerfile.drift -t asp-drift:latest infra/airflow
   ```
 
   Check they exist: `docker images | grep asp-` → you should see `asp-backend`,
-  `asp-training`, and (for the retraining DAG) `asp-airflow-runner`.
+  `asp-training`, and (for the retraining DAG) `asp-airflow-runner` and `asp-drift`.
 
 ---
 

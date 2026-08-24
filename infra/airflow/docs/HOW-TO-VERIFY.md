@@ -141,10 +141,17 @@ From the **repo root**:
 docker compose --profile build-only build     # -> asp-training:latest
 docker compose build backend                   # -> asp-backend:latest
 docker build -f infra/airflow/Dockerfile.runner -t asp-airflow-runner:latest infra/airflow   # -> runner (for retraining DAG)
+docker build -f infra/airflow/Dockerfile.drift  -t asp-drift:latest infra/airflow            # -> drift (detect_drift task, Phase 9)
 docker images | findstr asp-                   # (Windows) list them; on mac/linux use `grep asp-`
 ```
 
-✅ **Expected:** three images: `asp-backend`, `asp-training`, `asp-airflow-runner`.
+✅ **Expected:** four images: `asp-backend`, `asp-training`, `asp-airflow-runner`, `asp-drift`.
+
+> **Drift step (Phase 9).** The retraining DAG has a `detect_drift` task after `train`
+> (Evidently data/target drift + an F1 gate that blocks promotion below `ASP_F1_THRESHOLD`).
+> Unit tests run in the normal suite (Evidently mocked): `uv run pytest services/monitoring/tests -q`.
+> Reproduce standalone: `docker run --rm -v "${PWD}:/app" -w /app asp-drift:latest python -m services.monitoring.drift`.
+> See phase-9-drift-detection.md.
 
 ### Step 2 — run the backend API in a container (Phase 5)
 
