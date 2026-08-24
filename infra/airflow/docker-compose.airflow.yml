@@ -36,10 +36,13 @@ services:
       ASP_BACKEND_IMAGE: ${ASP_BACKEND_IMAGE:-asp-backend:latest}
       ASP_TRAINING_IMAGE: ${ASP_TRAINING_IMAGE:-asp-training:latest}
       ASP_RUNNER_IMAGE: ${ASP_RUNNER_IMAGE:-asp-airflow-runner:latest}
+      # DagsHub token for MLflow tracking (training service calls dagshub.init()).
+      DAGSHUB_USER_TOKEN: ${DAGSHUB_USER_TOKEN:-}
       # Retraining DAG only: DagsHub creds for the DVC task + optional FastAPI reload URL.
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
-      FASTAPI_RELOAD_URL: ${FASTAPI_RELOAD_URL:-}
+      FASTAPI_RELOAD_URL: ${FASTAPI_RELOAD_URL:-}      # STEP 7: backend reload endpoint
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}        # STEP 8: Slack alerts webhook
     volumes:
       - ./dags:/opt/airflow/dags                   # your DAG(s)
       - ./plugins:/opt/airflow/plugins             # Airflow plugins (empty for now)

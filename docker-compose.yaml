@@ -17,8 +17,8 @@ services:
         # DOCKER_GID: ${DOCKER_GID}
     image: asp-backend:latest
     container_name: asp-backend
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     volumes:
       - ./data:/app/data
       - ./artifacts:/app/artifacts
@@ -33,6 +33,35 @@ services:
       DAGSHUB_USER_TOKEN: ${DAGSHUB_USER_TOKEN}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - asp-network
+
+  # Nginx TLS-terminating reverse proxy
+  #   - Host port 8081 -> container 443 (HTTPS only; HTTP 80 redirects to HTTPS)
+  #   - Certificates are mounted read-only from the local filesystem and are
+  #     never baked into the image.
+  #   - Waits for the backend healthcheck before taking traffic.
+  nginx:
+    build:
+      context: ./infra/nginx
+      dockerfile: Dockerfile.nginx
+    image: asp-nginx:latest
+    container_name: asp-nginx
+    ports:
+      - "8081:443"
+    volumes:
+      # Mount only the generated development certificate (read-only).
+      - ./infra/nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider https://127.0.0.1/api/v1/health --no-check-certificate || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
