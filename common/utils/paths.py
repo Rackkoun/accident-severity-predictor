@@ -42,7 +42,6 @@ DATA_PROCESSING_CONFIG: dict[str, Any] = {
     "exclusive_test_year": 2024,
     "test_size": 0.3,
     "random_state": 42,
-    "normalize": True,
 }
 
 # model config
