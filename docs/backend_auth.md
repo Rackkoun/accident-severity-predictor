@@ -27,7 +27,7 @@ The Base64 encoding avoids issues caused by the `$` character in bcrypt hashes, 
 Generate a password hash:
 
 ```bash
-python -c "import bcrypt, base64; h = bcrypt.hashpw(b'password123', bcrypt.gensalt()); print(base64.b64encode(h).decode())"
+python -c "import bcrypt, base64; h = bcrypt.hashpw(b'user123', bcrypt.gensalt()); print(base64.b64encode(h).decode())"
 ```
 
 Generate a JWT secret:
