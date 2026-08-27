@@ -2,14 +2,17 @@
 Backend service entrypoint with model lifecycle management.
 """
 
-from collections.abc import AsyncGenerator
+import time
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from starlette.responses import Response
 
 from common.utils.asp_logging import get_logger
-from services.backend.src.routes import auth, health, predict, reload, train
+from services.backend.src.core.metrics import http_request_duration_seconds, http_requests_total
+from services.backend.src.routes import auth, health, metrics, predict, reload, train
 from services.backend.src.services.prediction_service import load_model
 
 logger = get_logger(__name__)
@@ -47,6 +50,29 @@ app.include_router(health.router)
 app.include_router(train.router)
 app.include_router(predict.router)
 app.include_router(reload.router)
+app.include_router(metrics.router)
+
+
+@app.middleware("http")
+async def prometheus_middleware(
+    request: Request,
+    call_next: Callable[[Request], Awaitable[Response]],
+) -> Response:
+    if request.url.path == "/metrics":
+        return await call_next(request)  # don't measure the metrics endpoint itself
+
+    start = time.perf_counter()
+    response = await call_next(request)
+    duration = time.perf_counter() - start
+
+    # use the matched route template (e.g. "/api/v1/predict"), not the raw
+    # path, to avoid label explosion if you ever add path params
+    route = request.scope.get("route")
+    path = route.path if route else request.url.path
+
+    http_requests_total.labels(method=request.method, path=path, status_code=response.status_code).inc()
+    http_request_duration_seconds.labels(method=request.method, path=path).observe(duration)
+    return response
 
 
 @app.get("/")

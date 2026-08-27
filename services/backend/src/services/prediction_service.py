@@ -5,12 +5,15 @@ Loads a registered model from the MLflow Model Registry
 and makes predictions on incoming requests.
 """
 
+import time
+
 import pandas as pd
 from fastapi import HTTPException
 
 from common.utils.asp_logging import get_logger
 from common.utils.mlflow import load_registered_model, setup_mlflow
 from common.utils.paths import MODEL_CONFIG
+from services.backend.src.core.metrics import model_loaded, prediction_confidence, prediction_duration_seconds, predictions_total
 from services.backend.src.schemas.prediction import PredictionRequest, PredictionResponse
 
 logger = get_logger(__name__)
@@ -57,9 +60,11 @@ def load_model(
         _model_cache["name"] = f"{MODEL_CONFIG['model_registry_name']}@{alias} (v{loaded['version']})"
         _model_cache["alias"] = alias
         logger.info(f"Loaded {_model_cache['name']} ({len(_model_cache['features'])} features)")
+        model_loaded.labels(model_version=_model_cache["name"], alias=alias).set(1)
 
     except Exception as exc:
         logger.exception("Failed to load registered model.")
+        model_loaded.labels(model_version="none", alias=alias).set(0)
 
         _model_cache = {
             "model": None,
@@ -119,6 +124,7 @@ def predict_accident(request: PredictionRequest) -> PredictionResponse:
         ) from exc
 
     # predict
+    start = time.perf_counter()
     prediction = int(model.predict(df)[0])
 
     # probability (RandomForest supports predict_proba)
@@ -126,6 +132,12 @@ def predict_accident(request: PredictionRequest) -> PredictionResponse:
     if hasattr(model, "predict_proba"):
         proba = model.predict_proba(df)[0]
         probability = float(proba[prediction])
+    duration = time.perf_counter() - start
+
+    predictions_total.labels(severity_code=str(prediction), model_version=model_name or "unknown").inc()
+    prediction_duration_seconds.labels(model_version=model_name or "unknown").observe(duration)
+    if probability is not None:
+        prediction_confidence.labels(model_version=model_name or "unknown").observe(probability)
 
     severity_map = {
         0: "Unharmed / Lightly injured",

@@ -13,9 +13,10 @@ keeps serving the OLD cached model until it is told to reload — which is exact
 what this endpoint does (it reuses the existing `load_model(force_reload=True)`).
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from common.utils.asp_logging import get_logger
+from services.backend.src.core.metrics import model_reload_total
 from services.backend.src.services.prediction_service import get_model_status, load_model
 
 logger = get_logger(__name__)
@@ -32,7 +33,13 @@ def reload_model() -> dict:
     (no model / registry unreachable), `load_model` raises an HTTP 503.
     """
     logger.info("Reload requested: force-reloading the 'production' model...")
-    load_model(force_reload=True)  # reuses the existing loader; raises HTTP 503 on failure
+    try:
+        load_model(force_reload=True)
+    except HTTPException:  # reuses the existing loader; raises HTTP 503 on failure
+        model_reload_total.labels(status="failure").inc()
+        raise
+    model_reload_total.labels(status="success").inc()
+
     status = get_model_status()
     logger.info(f"Reload complete: now serving {status['name']}")
     return {"status": "reloaded", "model": status}
