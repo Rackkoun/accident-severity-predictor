@@ -1,5 +1,5 @@
 """
-Merge cleaned tables, split train/test, inpute/normalize features and save datasets
+Merge cleaned tables, split train/test, inpute features and save datasets
 """
 
 from collections import defaultdict
@@ -99,9 +99,8 @@ def split_data(
 def process_features(
         X_train: pd.DataFrame,
         X_test: pd.DataFrame,
-        normalize: bool = True,
     ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """impute NaNs (median for numeric, mode for categorical) and optionally normalize."""
+    """impute NaNs (median for numeric, mode for categorical)."""
 
     cat_cols = [c for c in CAT_COLS if c in X_train.columns]
     num_cols = [c for c in X_train.columns if c not in cat_cols]
@@ -114,11 +113,6 @@ def process_features(
 
     X_train[cat_cols] = mode_imputer.fit_transform(X_train[cat_cols])
     X_test[cat_cols] = mode_imputer.transform(X_test[cat_cols])
-
-    if normalize:
-        scaler = StandardScaler()
-        X_train = pd.DataFrame(scaler.fit_transform(X_train), columns=X_train.columns, index=X_train.index)
-        X_test = pd.DataFrame(scaler.transform(X_test), columns=X_test.columns, index=X_test.index)
 
     return X_train, X_test
 

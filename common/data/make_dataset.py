@@ -92,7 +92,6 @@ def process_data(
         exclusive_test_year: int | None = DATA_PROCESSING_CONFIG["exclusive_test_year"],
         raw_data_dir: str | Path = RAW_DATA_DIR,
         processed_data_dir: str | Path = PROCESSED_DATA_DIR,
-        normalize: bool = DATA_PROCESSING_CONFIG["normalize"],
         test_size: float = DATA_PROCESSING_CONFIG["test_size"],
         random_state: int = DATA_PROCESSING_CONFIG["random_state"],
         overwrite: bool = False,
@@ -124,7 +123,7 @@ def process_data(
     save_drift_frames(X_train, y_train, X_test, y_test, processed_data_dir)
 
     logger.info("Processing features...")
-    X_train, X_test = process_features(X_train, X_test, normalize=normalize)
+    X_train, X_test = process_features(X_train, X_test)
 
     logger.info("Saving processed datasets...")
     save_datasets(X_train, X_test, y_train, y_test, processed_data_dir)

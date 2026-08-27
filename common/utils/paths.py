@@ -42,7 +42,6 @@ DATA_PROCESSING_CONFIG: dict[str, Any] = {
     "exclusive_test_year": 2024,
     "test_size": 0.3,
     "random_state": 42,
-    "normalize": True,
 }
 
 # model config
@@ -51,7 +50,10 @@ MODEL_CONFIG: dict[str, Any] = {
     "model_registry_name": "accident-severity-predictor",
     "model_parameters": {
         "random_state": 42,
-        "n_estimators": 200,
+        "n_estimators": 100,
+        "max_depth": 20,
+        "min_samples_leaf": 2,
+        "min_samples_split": 5,
         "n_jobs": -1,
     },
     "top_n_features": 20,

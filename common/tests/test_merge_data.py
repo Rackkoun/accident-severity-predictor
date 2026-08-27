@@ -171,29 +171,9 @@ def test_process_features_imputation():
         }
     )
 
-    X_tr, X_te = process_features(X_train, X_test, normalize=False)
+    X_tr, X_te = process_features(X_train, X_test)
     assert not X_tr.isnull().any().any()
     assert not X_te.isnull().any().any()
-
-
-def test_process_features_normalization():
-    X_train = pd.DataFrame(
-        {
-            "place": [1, 2, 1],  # CAT_COLS
-            "catu": [1, 2, 1],
-            "num_feat": [1.0, 2.0, 3.0],  # num
-        }
-    )
-    X_test = pd.DataFrame(
-        {
-            "place": [2, 1],
-            "catu": [1, 2],
-            "num_feat": [0.0, 4.0],
-        }
-    )
-
-    X_tr, _ = process_features(X_train, X_test, normalize=True)
-    assert abs(X_tr["num_feat"].mean()) < 0.01
 
 
 def test_save_datasets(tmp_path):

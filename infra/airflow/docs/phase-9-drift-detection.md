@@ -31,7 +31,7 @@ polished **HTML** drift report (for humans) and a **JSON** report (for machines)
 
 ---
 
-## 9.2 The approach — reference vs current, and one gotcha
+## 9.2 The approach — reference vs current
 
 **Reference vs current is already in your project.** `split_data` uses `exclusive_test_year=2024`, so:
 
@@ -40,10 +40,7 @@ reference = training years (2021–2023)   -> the "baseline"
 current   = the new annual batch (2024)  -> what we compare against the baseline
 ```
 
-**The gotcha (important).** `process_features` scales *all* feature columns — including the
-categorical ones (`atm`, `col`, `catr` are integer category codes that get turned into floats). If
-Evidently reads the scaled `data/processed/X_*.csv`, it treats `atm` as a *number* and "atm drifted
-from 0.2 to 0.4" is meaningless. So Phase 9 adds a tiny export in `make_dataset` that snapshots the
+Phase 9 adds a tiny export in `make_dataset` that snapshots the
 **raw, pre-normalization** frames:
 
 ```

@@ -40,6 +40,10 @@ def setup_mlflow(
     """setup mlflow for dagshub."""
 
     logger.info("Initializing DagsHub MLflow tracking...")
+
+    # Increase HTTP timeout
+    dagshub.common.config.http_timeout = 300
+
     dagshub.init(
         repo_owner="Rackkoun",
         repo_name="accident-severity-predictor",
