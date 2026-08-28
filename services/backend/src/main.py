@@ -40,6 +40,7 @@ app = FastAPI(
     - **POST /api/v1/predict** — Predict severity from accident features
     - **POST /api/v1/model/reload** — Reload the current 'production' model (used after retraining promotes a new champion)
     - **GET /api/v1/health** — Check service and model status
+    - **GET /metrics** — Prometheus metrics (internal network only, not exposed via nginx)
     """,
     version="1.0.0",
     lifespan=lifespan,
@@ -59,20 +60,20 @@ async def prometheus_middleware(
     call_next: Callable[[Request], Awaitable[Response]],
 ) -> Response:
     if request.url.path == "/metrics":
-        return await call_next(request)  # don't measure the metrics endpoint itself
+        return await call_next(request)
 
     start = time.perf_counter()
-    response = await call_next(request)
-    duration = time.perf_counter() - start
-
-    # use the matched route template (e.g. "/api/v1/predict"), not the raw
-    # path, to avoid label explosion if you ever add path params
-    route = request.scope.get("route")
-    path = route.path if route else request.url.path
-
-    http_requests_total.labels(method=request.method, path=path, status_code=response.status_code).inc()
-    http_request_duration_seconds.labels(method=request.method, path=path).observe(duration)
-    return response
+    status_code = 500  # assume failure unless call_next succeeds
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+        return response
+    finally:
+        duration = time.perf_counter() - start
+        route = request.scope.get("route")
+        path = route.path if route else "unmatched"
+        http_requests_total.labels(method=request.method, path=path, status_code=status_code).inc()
+        http_request_duration_seconds.labels(method=request.method, path=path).observe(duration)
 
 
 @app.get("/")

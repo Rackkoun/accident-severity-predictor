@@ -262,12 +262,28 @@ uv run dvc push
 
 *Note: DVC automatically protects the heavy binaries (`data/` and `artifacts/models/`), ensuring they are never accidentally committed to Git, while code and lightweight configurations are managed via Git.*
 
-### 🔄 Automated CI/CD Execution (No Manual Action Required)
+
+---
+
+## 📊 Experiment Tracking (MLflow & DagsHub)
+
+For MLflow experiment tracking setup and configuration via DagsHub, see the [MLflow tracking README](infra/tracking/mlflow/README.md).
+
+---
+
+## 📈 Monitoring (Prometheus & Grafana)
+
+For Prometheus and Grafana monitoring setup and configuration, see the [monitoring README](infra/monitoring/README.md).
+
+---
+
+## 🔄 Automated CI/CD Execution (No Manual Action Required)
 
 Thanks to our integrated **GitHub Actions CI/CD Pipeline**, you rarely need to run the training or deployment manually:
 
 * **Automatic Model Verification:** Every time you open a Pull Request, GitHub automatically spins up a runner, installs the environment via `uv`, pulls the latest model from DagsHub via S3, and verifies that the prediction service (`backend`) passes all integration and health checks.
 * **Continuous Training (CD):** Merging code into the main branches triggers the automated orchestration, ensuring that containers are rebuilt and validated without any local hardware dependency.
+
 
 ***
 
