@@ -113,10 +113,12 @@ TOKEN_ADMIN=$(curl -sk -X POST https://asp.local:8081/api/v1/login \
   | python3 -c "import sys, json; print(json.load(sys.stdin)['access_token'])")
 
 curl -sk -X POST https://asp.local:8081/api/v1/train \
-  -H "Authorization: Bearer $TOKEN_ADMIN"
+  -H "Authorization: Bearer $TOKEN_ADMIN" \
+  -H "Content-Type: application/json" \
+  -d '{"model_name": null}'
 ```
 
-**5. Verify rate limiting (login zone = 1 r/10s, burst 1):**
+**5. Verify rate limiting (login zone = 6 r/m, burst 1):**
 
 ```bash
 for i in 1 2 3 4 5; do
@@ -145,7 +147,7 @@ done
 
 | Endpoint        | Zone             | Rate        | Burst |
 |-----------------|------------------|-------------|-------|
-| `/api/v1/login` | `asp_login_limit`   | 1 r/10s     | 1     |
+| `/api/v1/login` | `asp_login_limit`   | 6 r/m    | 1     |
 | `/api/v1/train` | `asp_train_limit`   | 1 r/m       | 1     |
 | `/api/v1/predict` | `asp_predict_limit` | 10 r/s     | 20    |
 | `/api/v1/health` | `asp_health_limit`  | 20 r/s     | 50    |
