@@ -5,8 +5,12 @@ Loads a registered model from the MLflow Model Registry
 and makes predictions on incoming requests.
 """
 
+import json
+from datetime import UTC, datetime
+
 import pandas as pd
 from fastapi import HTTPException
+from mlflow import MlflowClient
 
 from common.utils.asp_logging import get_logger
 from common.utils.mlflow import load_registered_model, setup_mlflow
@@ -21,6 +25,8 @@ _model_cache: dict = {
     "features": None,
     "name": None,
     "alias": None,
+    "version": None,
+    "run_id": None,
 }
 
 
@@ -56,6 +62,8 @@ def load_model(
         _model_cache["features"] = loaded["features"]
         _model_cache["name"] = f"{MODEL_CONFIG['model_registry_name']}@{alias} (v{loaded['version']})"
         _model_cache["alias"] = alias
+        _model_cache["version"] = loaded["version"]
+        _model_cache["run_id"] = loaded["run_id"]
         logger.info(f"Loaded {_model_cache['name']} ({len(_model_cache['features'])} features)")
 
     except Exception as exc:
@@ -66,6 +74,8 @@ def load_model(
             "features": None,
             "name": None,
             "alias": None,
+            "version": None,
+            "run_id": None,
         }
 
         raise HTTPException(
@@ -148,3 +158,57 @@ def get_model_status() -> dict:
         "alias": _model_cache["alias"],
         "features_count": len(_model_cache["features"]) if _model_cache["features"] else 0,
     }
+
+
+def _coerce_parse(value: str) -> object:
+    """convert mlflow string params back to primitive json values"""
+
+    try:
+        return json.loads(value)
+    except (TypeError, json.JSONDecodeError):
+        return value
+
+
+def get_model_info() -> dict:
+    """return metadata for the current loaded production model"""
+
+    global _model_cache
+
+    if _model_cache["model"] is None:
+        load_model()
+
+    run_id = _model_cache["run_id"]
+
+    if not run_id:
+        raise HTTPException(status_code=503, detail="Model run metadata is unvailable")
+
+    try:
+        client = MlflowClient()
+        run = client.get_run(run_id)
+
+        trained_at = datetime.fromtimestamp(
+            run.info.start_time / 1000,
+            tz=UTC,
+        ).isoformat()
+
+        parameters = {key: _coerce_parse(value) for key, value in run.data.params.items()}
+
+        metrics = {key: _coerce_parse(value) for key, value in run.data.metrics.items()}
+
+        return {
+            "registry_name": MODEL_CONFIG["model_registry_name"],
+            "alias": _model_cache["alias"],
+            "version": str(_model_cache["version"]),
+            "algorithm": type(_model_cache["model"]).__name__,
+            "trained_at": trained_at,
+            "dataset": "BAAC 2005-2024 (FR)",
+            "features_count": len(_model_cache["features"] or []),
+            "metrics": metrics,
+            "parameters": parameters,
+        }
+    except Exception as exc:
+        logger.exception("Failed to retrieve model metadata.")
+        raise HTTPException(
+            status_code=503,
+            detail=f"Unable to retrieve model metadata: {exc}",
+        ) from exc

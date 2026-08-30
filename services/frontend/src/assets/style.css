@@ -1,36 +1,466 @@
-/* ---------- GLOBAL ------------- */
+/* ============================================================
+   ASP — GLOBAL
+   ============================================================ */
+
 html,
 body,
 [class*="css"] {
-    background-color: #192E36;
     color: #F2F2F2;
 }
 
-/* --------- Header ----------- */
+/* Main Streamlit application background */
+
+[data-testid="stAppViewContainer"] {
+    background: #0F151A;
+}
+
+[data-testid="stMain"] {
+    background: #0F151A;
+}
+
+/* Main content */
+
+.block-container {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+    max-width: 100%;
+}
+
+/* Typography */
+
 h1,
 h2,
-h3 {
+h3,
+h4 {
     color: #F2F2F2;
 }
 
-/* --------- Buttons ----------- */
-.stButton>button {
+
+/* ============================================================
+   ASP — PAGE HEADER
+   ============================================================ */
+
+.asp-page-header {
+    padding: 0 0 1.4rem 0;
+}
+
+.asp-eyebrow {
+    color: #36B3C9;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    margin-bottom: 0.35rem;
+}
+
+.asp-page-header h1 {
+    margin: 0;
+    padding: 0;
+    color: #F2F2F2;
+    font-size: 2rem;
+    line-height: 1.15;
+    font-weight: 700;
+}
+
+.asp-page-header p {
+    margin: 0.45rem 0 0 0;
+    color: #AAB8BD;
+    font-size: 0.88rem;
+}
+
+
+/* ============================================================
+   ASP — SECTION TITLES
+   ============================================================ */
+
+.asp-section-title {
+    margin: 1.2rem 0 0.8rem 0;
+    color: #F2F2F2;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+
+/* ============================================================
+   ASP — CARDS
+   ============================================================ */
+
+.asp-card {
     width: 100%;
-    border-radius: 10px;
-    height: 48px;
-    background-color: #599191;
-    color: white;
-    border: none;
+    box-sizing: border-box;
+
+    background: #233943;
+    border: 1px solid #335150;
+    border-radius: 12px;
+
+    padding: 1.15rem;
+
+    color: #F2F2F2;
+
+    box-shadow:
+        0 4px 18px rgba(0, 0, 0, 0.12);
+}
+
+.asp-system-card,
+.asp-model-card {
+    min-height: 218px;
+}
+
+.asp-card-title {
+    margin-bottom: 1rem;
+
+    color: #8FA7AE;
+
+    font-size: 0.68rem;
+    font-weight: 700;
+
+    letter-spacing: 0.12em;
+}
+
+
+/* ============================================================
+   ASP — SYSTEM STATUS
+   ============================================================ */
+
+.asp-status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    width: 100%;
+    min-height: 38px;
+
+    padding: 0.45rem 0;
+
+    border-bottom: 1px solid rgba(143, 167, 174, 0.15);
+
+    font-size: 0.86rem;
+}
+
+.asp-status-row:last-child {
+    border-bottom: none;
+}
+
+.asp-status-row > span:first-child {
+    color: #D5E0E3;
+}
+
+.status-ok {
+    color: #30C48D;
     font-weight: 600;
 }
 
-.stButton>button:hover {
-    background-color: #36B3C9;
+.status-danger {
+    color: #E05260;
+    font-weight: 600;
 }
 
-/* --------- Cards ----------- */
-div[data-testid="stMetric"] {
-    background-color: #233943;
-    border-radius: 10px;
-    padding: 12px;
+
+/* ============================================================
+   ASP — ACTIVE MODEL
+   ============================================================ */
+
+.asp-model-name {
+    margin-bottom: 1rem;
+
+    color: #F2F2F2;
+
+    font-size: 1.08rem;
+    font-weight: 700;
+
+    line-height: 1.25;
+}
+
+.asp-model-meta {
+    display: grid;
+
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+
+    gap: 0.75rem 1rem;
+
+    margin-bottom: 0.85rem;
+}
+
+.asp-model-meta-item {
+    min-width: 0;
+}
+
+.asp-model-meta-item span,
+.asp-model-details span {
+    display: block;
+
+    margin-bottom: 0.2rem;
+
+    color: #8FA7AE;
+
+    font-size: 0.66rem;
+    font-weight: 500;
+}
+
+.asp-model-meta-item strong,
+.asp-model-details strong {
+    display: block;
+
+    color: #F2F2F2;
+
+    font-size: 0.82rem;
+    font-weight: 600;
+
+    overflow-wrap: anywhere;
+}
+
+.asp-model-details {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+
+    gap: 1rem;
+
+    margin-top: 0.55rem;
+    padding-top: 0.55rem;
+
+    border-top: 1px solid rgba(143, 167, 174, 0.12);
+}
+
+.asp-model-details span {
+    margin-bottom: 0;
+    flex-shrink: 0;
+}
+
+.asp-model-details strong {
+    text-align: right;
+}
+
+.asp-model-unavailable {
+    color: #AAB8BD;
+    font-size: 0.85rem;
+    padding-top: 0.5rem;
+}
+
+
+/* ============================================================
+   ASP — METRIC CARDS
+   ============================================================ */
+
+.asp-metric-card {
+    width: 100%;
+    min-height: 105px;
+
+    box-sizing: border-box;
+
+    background: #233943;
+
+    border: 1px solid #335150;
+    border-radius: 12px;
+
+    padding: 1rem;
+
+    box-shadow:
+        0 4px 18px rgba(0, 0, 0, 0.10);
+}
+
+.asp-metric-label {
+    color: #8FA7AE;
+
+    font-size: 0.66rem;
+    font-weight: 700;
+
+    letter-spacing: 0.08em;
+}
+
+.asp-metric-value {
+    margin-top: 0.35rem;
+
+    color: #36B3C9;
+
+    font-size: 1.55rem;
+    line-height: 1.1;
+
+    font-weight: 700;
+}
+
+.asp-metric-description {
+    margin-top: 0.25rem;
+
+    color: #8FA7AE;
+
+    font-size: 0.66rem;
+}
+
+
+/* ============================================================
+   ASP — ACTION BUTTONS
+   ============================================================ */
+
+.asp-action-spacer {
+    height: 1rem;
+}
+
+.stButton > button {
+    width: 100%;
+
+    min-height: 46px;
+
+    border-radius: 8px;
+
+    background: #599191;
+
+    color: #FFFFFF;
+
+    border: 1px solid #599191;
+
+    font-weight: 600;
+
+    transition:
+        background-color 120ms ease,
+        border-color 120ms ease,
+        transform 120ms ease;
+}
+
+.stButton > button:hover {
+    background: #36B3C9;
+
+    border-color: #36B3C9;
+
+    color: #FFFFFF;
+}
+
+.stButton > button:active {
+    transform: translateY(1px);
+}
+
+
+/* ============================================================
+   ASP — SIDEBAR
+   ============================================================ */
+
+[data-testid="stSidebar"] {
+    background: #111C22;
+}
+
+[data-testid="stSidebar"] > div:first-child {
+    background: #111C22;
+}
+
+[data-testid="stSidebar"] .stButton {
+    width: 100%;
+    margin: 0 0 0.35rem 0;
+}
+
+[data-testid="stSidebar"] .stButton > button {
+    width: 100%;
+    min-height: 42px;
+
+    box-sizing: border-box;
+
+    padding: 0.55rem 0.75rem;
+
+    background: transparent;
+
+    border: 1px solid transparent;
+    border-radius: 7px;
+
+    color: #C4D0D4;
+
+    text-align: left;
+
+    font-weight: 500;
+
+    transition:
+        background-color 120ms ease,
+        color 120ms ease,
+        border-color 120ms ease;
+}
+
+
+/* Sidebar hover */
+
+[data-testid="stSidebar"] .stButton > button:hover {
+    background: rgba(54, 179, 201, 0.08);
+
+    border-color: rgba(54, 179, 201, 0.18);
+
+    color: #F2F2F2;
+}
+
+
+/* Sidebar active item */
+
+[data-testid="stSidebar"] .st-key-nav-active-home .stButton > button,
+[data-testid="stSidebar"] .st-key-nav-active-prediction .stButton > button,
+[data-testid="stSidebar"] .st-key-nav-active-monitoring .stButton > button,
+[data-testid="stSidebar"] .st-key-nav-active-insights .stButton > button,
+[data-testid="stSidebar"] .st-key-nav-active-login .stButton > button {
+    width: 100%;
+
+    background: #147F87;
+
+    border-color: #25AEB8;
+
+    color: #FFFFFF;
+}
+
+
+/* Sidebar active hover */
+
+[data-testid="stSidebar"] .st-key-nav-active-home .stButton > button:hover,
+[data-testid="stSidebar"] .st-key-nav-active-prediction .stButton > button:hover,
+[data-testid="stSidebar"] .st-key-nav-active-monitoring .stButton > button:hover,
+[data-testid="stSidebar"] .st-key-nav-active-insights .stButton > button:hover,
+[data-testid="stSidebar"] .st-key-nav-active-login .stButton > button:hover {
+    background: #19919A;
+
+    border-color: #36B3C9;
+
+    color: #FFFFFF;
+}
+
+
+/* Ensure navigation containers occupy full width */
+
+[data-testid="stSidebar"] [class*="st-key-nav-"] {
+    width: 100%;
+    margin-bottom: 0.35rem;
+}
+
+
+/* ============================================================
+   ASP — STREAMLIT CLEANUP
+   ============================================================ */
+
+/* Remove excessive spacing around HTML components */
+
+[data-testid="stMarkdownContainer"] {
+    margin: 0;
+}
+
+/* Keep columns aligned */
+
+[data-testid="column"] {
+    min-width: 0;
+}
+
+
+/* ============================================================
+   ASP — RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 900px) {
+
+    .asp-page-header h1 {
+        font-size: 1.65rem;
+    }
+
+    .asp-model-meta {
+        grid-template-columns: 1fr;
+    }
+
+    .asp-model-details {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.2rem;
+    }
+
+    .asp-model-details strong {
+        text-align: left;
+    }
 }

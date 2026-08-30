@@ -143,6 +143,8 @@ def test_load_model_failure(
         "features": None,
         "name": None,
         "alias": None,
+        "version": None,
+        "run_id": None,
     }
 
 
