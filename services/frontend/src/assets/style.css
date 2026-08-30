@@ -513,3 +513,213 @@ h4 {
     line-height: 1.6;
     margin-top: 24px;
 }
+
+/* ============================================================
+   ASP — PREDICTION LAB
+   ============================================================ */
+
+.asp-prediction-section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+
+    margin: 1rem 0 0.65rem 0;
+
+    color: #DDE8EB;
+
+    font-size: 0.76rem;
+    font-weight: 700;
+
+    letter-spacing: 0.07em;
+}
+
+.asp-prediction-section-title span:first-child {
+    font-size: 0.85rem;
+}
+
+
+/* ------------------------------------------------------------
+   Input panel
+   ------------------------------------------------------------ */
+
+.asp-input-panel-title {
+    margin-bottom: 0.7rem;
+
+    color: #8FA7AE;
+
+    font-size: 0.68rem;
+    font-weight: 700;
+
+    letter-spacing: 0.12em;
+}
+
+
+/* ------------------------------------------------------------
+   Result cards
+   ------------------------------------------------------------ */
+
+.asp-prediction-result-card {
+    width: 100%;
+    min-height: 145px;
+
+    box-sizing: border-box;
+
+    margin-bottom: 0.9rem;
+    padding: 1rem;
+
+    background: #233943;
+
+    border: 1px solid #335150;
+    border-radius: 12px;
+
+    box-shadow:
+        0 4px 18px rgba(0, 0, 0, 0.10);
+}
+
+.asp-prediction-result-card .asp-card-title {
+    margin-bottom: 0.8rem;
+}
+
+
+/* ------------------------------------------------------------
+   Empty prediction state
+   ------------------------------------------------------------ */
+
+.asp-prediction-empty {
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+    justify-content: center;
+
+    min-height: 95px;
+
+    text-align: center;
+}
+
+.asp-prediction-empty-icon {
+    margin-bottom: 0.25rem;
+
+    color: #36B3C9;
+
+    font-size: 1.4rem;
+}
+
+.asp-prediction-empty-title {
+    color: #F2F2F2;
+
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.asp-prediction-empty-text {
+    max-width: 430px;
+
+    margin-top: 0.3rem;
+
+    color: #8FA7AE;
+
+    font-size: 0.72rem;
+    line-height: 1.45;
+}
+
+
+/* ------------------------------------------------------------
+   Placeholder
+   ------------------------------------------------------------ */
+
+.asp-placeholder-message {
+    display: flex;
+
+    align-items: center;
+
+    min-height: 80px;
+
+    color: #8FA7AE;
+
+    font-size: 0.74rem;
+    line-height: 1.5;
+}
+
+
+/* ------------------------------------------------------------
+   Explanation
+   ------------------------------------------------------------ */
+
+.asp-explanation-card {
+    min-height: 100px;
+}
+
+
+/* ------------------------------------------------------------
+   Form
+   ------------------------------------------------------------ */
+
+.asp-form-divider {
+    height: 1px;
+
+    margin: 0.75rem 0;
+
+    background: rgba(143, 167, 174, 0.15);
+}
+
+
+/* ------------------------------------------------------------
+   Disabled mapping fields
+   ------------------------------------------------------------ */
+
+[data-testid="stSelectbox"] {
+    margin-bottom: 0.15rem;
+}
+
+[data-testid="stSelectbox"] label {
+    color: #C7D3D6 !important;
+
+    font-size: 0.75rem !important;
+}
+
+[data-testid="stSelectbox"] div[aria-disabled="true"] {
+    opacity: 0.55;
+}
+
+
+/* ------------------------------------------------------------
+   Prediction submit button
+   ------------------------------------------------------------ */
+
+[data-testid="stFormSubmitButton"] button {
+    width: 100%;
+
+    min-height: 44px;
+
+    margin-top: 0.4rem;
+
+    border-radius: 8px;
+
+    background: #147F87;
+
+    border: 1px solid #25AEB8;
+
+    color: #FFFFFF;
+
+    font-weight: 700;
+}
+
+[data-testid="stFormSubmitButton"] button:hover {
+    background: #19919A;
+
+    border-color: #36B3C9;
+}
+
+
+/* ------------------------------------------------------------
+   Responsive
+   ------------------------------------------------------------ */
+
+@media (max-width: 1000px) {
+
+    .asp-prediction-result-card {
+        min-height: 125px;
+    }
+}
