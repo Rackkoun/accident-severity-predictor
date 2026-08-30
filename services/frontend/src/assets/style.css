@@ -464,3 +464,52 @@ h4 {
         text-align: left;
     }
 }
+
+/* ---------- LOGIN ---------- */
+
+.asp-login-brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 40px 0 30px 0;
+}
+
+.asp-login-logo {
+    width: 58px;
+    height: 58px;
+    border: 1px solid #36B3C9;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #36B3C9;
+    font-size: 1.1rem;
+    font-weight: 800;
+}
+
+.asp-login-title {
+    color: #F2F2F2;
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.asp-login-heading {
+    color: #F2F2F2;
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.asp-login-subtitle {
+    color: #8FA7AE;
+    margin-bottom: 24px;
+}
+
+.asp-login-footer {
+    text-align: center;
+    color: #71858B;
+    font-size: 0.7rem;
+    line-height: 1.6;
+    margin-top: 24px;
+}
