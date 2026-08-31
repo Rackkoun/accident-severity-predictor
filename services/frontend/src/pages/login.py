@@ -3,10 +3,13 @@
 import streamlit as st
 
 from services.frontend.src.services.auth_service import login
+from services.frontend.src.services.session_service import (
+    set_authenticated_session,
+)
 
 
 def login_page() -> None:
-    """Render the login page."""
+    """render the login page."""
 
     left, center, right = st.columns([1, 1.15, 1])
 
@@ -15,10 +18,15 @@ def login_page() -> None:
             """
             <div class="asp-login-brand">
                 <div class="asp-login-logo">ASP</div>
-                <div class="asp-login-title">Accident Severity<br>Predictor</div>
+                <div class="asp-login-title">
+                    Accident Severity<br>Predictor
+                </div>
             </div>
 
-            <div class="asp-login-heading">Welcome back!</div>
+            <div class="asp-login-heading">
+                Welcome back!
+            </div>
+
             <div class="asp-login-subtitle">
                 Please sign in to continue
             </div>
@@ -55,13 +63,20 @@ def login_page() -> None:
                 st.error("Invalid username or password.")
                 return
 
-            st.session_state.authenticated = True
-            st.session_state.token = token.access_token
-            st.session_state.username = username
-            st.session_state.remember_me = remember
-            st.session_state.page = "Home"
+            set_authenticated_session(
+                token=token.access_token,
+                username=username,
+                remember_me=remember,
+            )
 
-            st.success("Login successful.")
+            target_page = st.session_state.get(
+                "post_login_page",
+                "Home",
+            )
+
+            st.session_state.post_login_page = "Home"
+            st.session_state.page = target_page
+
             st.rerun()
 
         st.html(

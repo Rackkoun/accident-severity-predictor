@@ -1,6 +1,4 @@
-"""
-ASP frontend entrypoint
-"""
+"""ASP frontend entrypoint."""
 
 from pathlib import Path
 
@@ -12,10 +10,18 @@ from services.frontend.src.pages.home import home_page
 from services.frontend.src.pages.login import login_page
 from services.frontend.src.pages.monitoring import monitoring_page
 from services.frontend.src.pages.prediction import prediction_page
+from services.frontend.src.services.session_service import (
+    initialize_session,
+    is_admin,
+    is_authenticated,
+)
 
 
 def load_css() -> None:
+    """load application CSS."""
+
     css = Path(__file__).parent / "assets" / "style.css"
+
     with open(css, encoding="utf-8") as file:
         st.markdown(
             f"<style>{file.read()}</style>",
@@ -23,19 +29,35 @@ def load_css() -> None:
         )
 
 
-def initialize_session() -> None:
+def enforce_page_access() -> None:
+    """ensure the requested page is accessible."""
 
-    defaults = {
-        "page": "Home",
-        "authenticated": False,
-        "token": None,
+    page = st.session_state.get(
+        "page",
+        "Home",
+    )
+
+    protected_pages = {
+        "Prediction",
+        "Model Insights",
+        "Monitoring",
     }
 
-    for key, value in defaults.items():
-        st.session_state.setdefault(key, value)
+    if page not in protected_pages:
+        return
+
+    if not is_authenticated():
+        st.session_state.post_login_page = page
+        st.session_state.page = "Login"
+        return
+
+    if page == "Monitoring" and not is_admin():
+        st.session_state.page = "Home"
 
 
 def main() -> None:
+    """run the ASP frontend."""
+
     st.set_page_config(
         page_title=settings.page_title,
         page_icon=settings.page_icon,
@@ -43,23 +65,58 @@ def main() -> None:
         initial_sidebar_state=settings.sidebar_state,
     )
 
-    # load css
     load_css()
-    # initialize session state
+
     initialize_session()
-    # render sidebar
+
+    enforce_page_access()
+
     render_sidebar()
 
-    page = st.session_state.page
+    page = st.session_state.get(
+        "page",
+        "Home",
+    )
 
     if page == "Home":
         home_page()
+
     elif page == "Prediction":
         prediction_page()
+
     elif page == "Monitoring":
         monitoring_page()
+
     elif page == "Login":
         login_page()
+
+    elif page == "Model Insights":
+        st.html(
+            """
+            <div class="asp-page-header">
+                <div>
+                    <div class="asp-eyebrow">
+                        MODEL ANALYTICS
+                    </div>
+                    <h1>Model Insights</h1>
+                    <p>
+                        Model performance and metadata.
+                    </p>
+                </div>
+            </div>
+
+            <div class="asp-card">
+                <div class="asp-card-title">
+                    MODEL INSIGHTS
+                </div>
+
+                <p>
+                    This section will expose model metadata,
+                    evaluation metrics and feature importance.
+                </p>
+            </div>
+            """
+        )
 
 
 if __name__ == "__main__":
