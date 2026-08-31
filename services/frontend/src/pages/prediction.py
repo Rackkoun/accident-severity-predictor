@@ -2,12 +2,66 @@
 
 import streamlit as st
 
+from services.frontend.src.config.features_mapping import (
+    FEATURE_MAPS,
+    FEATURE_RANGES,
+    FEATURES_LABELS,
+)
 from services.frontend.src.models.prediction_model import PredictionResponse
 from services.frontend.src.services.prediction_service import predict
 
 
+def _mapped_selectbox(
+    feature: str,
+    *,
+    default_value: int | None = None,
+) -> int:
+    """render a human-readable selectbox and return the API value."""
+
+    mapping = FEATURE_MAPS[feature]
+    label = FEATURES_LABELS[feature]
+
+    values = list(mapping.keys())
+
+    if default_value is not None and default_value in values:
+        default_index = values.index(default_value)
+    else:
+        default_index = 0
+
+    selected_value = st.selectbox(
+        label,
+        options=values,
+        index=default_index,
+        format_func=lambda value: mapping[value],
+        key=f"prediction_{feature}",
+    )
+
+    return selected_value
+
+
+def _number_input(
+    feature: str,
+    *,
+    value: int | float,
+    step: int | float = 1,
+) -> int | float:
+    """render a constrained numeric input using FEATURE_RANGES."""
+
+    label = FEATURES_LABELS[feature]
+    min_value, max_value = FEATURE_RANGES[feature]
+
+    return st.number_input(
+        label,
+        min_value=min_value,
+        max_value=max_value,
+        value=value,
+        step=step,
+        key=f"prediction_{feature}",
+    )
+
+
 def _prediction_result_card(result: PredictionResponse) -> None:
-    """Render the prediction result."""
+    """render the prediction result."""
 
     probability = f"{result.probability * 100:.1f}%" if result.probability is not None else "N/A"
 
@@ -34,7 +88,7 @@ def _prediction_result_card(result: PredictionResponse) -> None:
 
 
 def _prediction_form() -> None:
-    """Render the prediction input form."""
+    """render the prediction input form."""
 
     st.html(
         """
@@ -44,204 +98,159 @@ def _prediction_form() -> None:
 
     col1, col2 = st.columns(2)
 
+    # ================================================================
+    # LEFT COLUMN — VICTIM / VEHICLE
+    # ================================================================
+
     with col1:
-        place = st.number_input(
-            "Victim position (place)",
-            min_value=0,
-            step=1,
-            value=1,
+        place = _mapped_selectbox(
+            "place",
+            default_value=1,
         )
 
-        catu = st.number_input(
-            "Victim category (catu)",
-            min_value=0,
-            step=1,
-            value=1,
+        catu = _mapped_selectbox(
+            "catu",
+            default_value=1,
         )
 
-        sexe = st.number_input(
-            "Sex (sexe)",
-            min_value=0,
-            step=1,
-            value=1,
+        sexe = _mapped_selectbox(
+            "sexe",
+            default_value=1,
         )
 
-        secu1 = st.number_input(
-            "Safety equipment (secu1)",
-            min_value=0,
-            step=1,
-            value=1,
+        secu1 = _mapped_selectbox(
+            "secu1",
+            default_value=1,
         )
 
-        victim_age = st.number_input(
-            "Victim age",
-            min_value=0,
-            max_value=120,
-            step=1,
+        victim_age = _number_input(
+            "victim_age",
             value=30,
         )
 
-        nb_victim = st.number_input(
-            "Number of victims",
-            min_value=1,
-            step=1,
+        nb_victim = _number_input(
+            "nb_victim",
             value=1,
         )
 
-        catv = st.number_input(
-            "Vehicle type (catv)",
-            min_value=0,
-            step=1,
-            value=7,
+        catv = _mapped_selectbox(
+            "catv",
+            default_value=2,
         )
 
-        obsm = st.number_input(
-            "Fixed obstacle (obsm)",
-            min_value=0,
-            step=1,
-            value=0,
+        obsm = _mapped_selectbox(
+            "obsm",
+            default_value=0,
         )
 
-        motor = st.number_input(
-            "Motor type (motor)",
-            min_value=0,
-            step=1,
-            value=0,
+        motor = _mapped_selectbox(
+            "motor",
+            default_value=0,
         )
 
-        nb_vehicles = st.number_input(
-            "Number of vehicles",
-            min_value=1,
-            step=1,
+        nb_vehicles = _number_input(
+            "nb_vehicles",
             value=1,
         )
 
-        catr = st.number_input(
-            "Road category (catr)",
-            min_value=0,
-            step=1,
-            value=3,
+        # ============================================================
+        # ROAD
+        # ============================================================
+
+        catr = _mapped_selectbox(
+            "catr",
+            default_value=3,
         )
 
-        circ = st.number_input(
-            "Traffic direction (circ)",
-            min_value=0,
-            step=1,
-            value=2,
+        circ = _mapped_selectbox(
+            "circ",
+            default_value=2,
         )
 
-        surf = st.number_input(
-            "Road surface (surf)",
-            min_value=0,
-            step=1,
-            value=1,
+        surf = _mapped_selectbox(
+            "surf",
+            default_value=1,
         )
 
-        situ = st.number_input(
-            "Accident situation (situ)",
-            min_value=0,
-            step=1,
-            value=1,
+        situ = _mapped_selectbox(
+            "situ",
+            default_value=1,
         )
+
+    # ================================================================
+    # RIGHT COLUMN — CONDITIONS / LOCATION
+    # ================================================================
 
     with col2:
-        vma = st.number_input(
-            "Speed limit (vma)",
-            min_value=0,
-            step=1,
+        vma = _number_input(
+            "vma",
             value=50,
         )
 
-        jour = st.number_input(
-            "Day (jour)",
-            min_value=1,
-            max_value=31,
-            step=1,
+        jour = _number_input(
+            "jour",
             value=15,
         )
 
-        mois = st.number_input(
-            "Month (mois)",
-            min_value=1,
-            max_value=12,
-            step=1,
+        mois = _number_input(
+            "mois",
             value=8,
         )
 
-        lum = st.number_input(
-            "Lighting (lum)",
-            min_value=0,
-            step=1,
-            value=1,
+        lum = _mapped_selectbox(
+            "lum",
+            default_value=1,
         )
 
-        dep = st.number_input(
-            "Department (dep)",
-            min_value=0,
-            step=1,
+        dep = _number_input(
+            "dep",
             value=75,
         )
 
-        com = st.number_input(
-            "Municipality (com)",
-            min_value=0,
-            step=1,
+        com = _number_input(
+            "com",
             value=1,
         )
 
-        agg = st.number_input(
-            "Urban area (agg)",
-            min_value=0,
-            step=1,
-            value=1,
+        agg = _mapped_selectbox(
+            "agg",
+            default_value=1,
         )
 
-        int_value = st.number_input(
-            "Intersection (int)",
-            min_value=0,
-            step=1,
-            value=1,
+        int_value = _mapped_selectbox(
+            "int",
+            default_value=1,
         )
 
-        atm = st.number_input(
-            "Weather conditions (atm)",
-            min_value=0,
-            step=1,
-            value=1,
+        atm = _mapped_selectbox(
+            "atm",
+            default_value=0,
         )
 
-        col = st.number_input(
-            "Collision type (col)",
-            min_value=0,
-            step=1,
-            value=1,
+        col = _mapped_selectbox(
+            "col",
+            default_value=1,
         )
 
-        lat = st.number_input(
-            "Latitude",
+        lat = _number_input(
+            "lat",
             value=48.8566,
-            format="%.6f",
+            step=0.0001,
         )
 
-        longitude = st.number_input(
-            "Longitude",
+        longitude = _number_input(
+            "long",
             value=2.3522,
-            format="%.6f",
+            step=0.0001,
         )
 
-        hour = st.number_input(
-            "Hour",
-            min_value=0,
-            max_value=23,
-            step=1,
+        hour = _number_input(
+            "hour",
             value=12,
         )
 
-        year_acc = st.number_input(
-            "Accident year",
-            min_value=2005,
-            max_value=2100,
-            step=1,
+        year_acc = _number_input(
+            "year_acc",
             value=2024,
         )
 
@@ -256,11 +265,23 @@ def _prediction_form() -> None:
     if not predict_clicked:
         return
 
+    # ================================================================
+    # AUTHENTICATION
+    # ================================================================
+
     token = st.session_state.get("access_token")
 
     if not token:
         st.error("Authentication required. Please log in first.")
         return
+
+    # ================================================================
+    # API PAYLOAD
+    #
+    # IMPORTANT:
+    # Values returned by mapped selectboxes are the actual API values.
+    # Human-readable labels never enter the payload.
+    # ================================================================
 
     payload = {
         "place": place,
@@ -304,7 +325,7 @@ def _prediction_form() -> None:
 
 
 def prediction_page() -> None:
-    """Render the ASP Prediction Lab."""
+    """render the ASP Prediction Lab."""
 
     st.html(
         """
@@ -326,6 +347,10 @@ def prediction_page() -> None:
         gap="large",
     )
 
+    # ================================================================
+    # INPUT PANEL
+    # ================================================================
+
     with left:
         st.html(
             """
@@ -338,11 +363,16 @@ def prediction_page() -> None:
 
         st.html("</div>")
 
+    # ================================================================
+    # RESULT PANEL
+    # ================================================================
+
     with right:
         result = st.session_state.get("prediction_result")
 
         if result is not None:
             _prediction_result_card(result)
+
         else:
             st.html(
                 """
