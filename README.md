@@ -115,6 +115,8 @@ uv --version
 
 Python should report version `3.12.x`.
 
+
+***
 If everything is correctly installed, the development environment is ready.
 
 ---
@@ -128,5 +130,7 @@ The project documentation is organized by component and responsibility.
 | [Backend](docs/backend.md)             | Backend architecture, configuration, authentication, API usage, training and testing |
 | [Reverse Proxy](docs/reverse_proxy.md) | Nginx setup, local HTTPS, TLS certificates, routing, rate limiting and verification  |
 | [DVC / DagsHub](docs/dvc_setup.md)     | Dataset and model versioning setup                                                   |
+| [MLflow](infra/tracking/mlflow/README.md) | Experiment tracking setup and configuration via DagsHub                           |
+| [Prometheus / Grafana](infra/monitoring/README.md) | Prometheus and Grafana monitoring setup and configuration                |
 
 Additional documentation will be added to `docs/` as the corresponding project components mature.
