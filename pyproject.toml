@@ -97,7 +97,7 @@ select = [
 # Notebooks: trailing whitespace + ML naming
 "notebooks/**/*.ipynb" = ["N803", "N806", "W291"]
 
-# fronten run
+# frontend run
 "services/frontend/run.py" = ["E402"]
 
 
@@ -154,6 +154,7 @@ module = [
     "services.training.tests.*",
     "services.backend.tests.*",
     "services.monitoring.tests.*",
+    "services.frontend.tests.*",
 ]
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
@@ -166,6 +167,7 @@ testpaths = [
     "services/training/tests",
     "services/backend/tests",
     "services/monitoring/tests",
+    "services/frontend/tests",
     "infra/airflow/tests",
 ]
 pythonpath = ["."]
@@ -196,6 +198,7 @@ omit = [
     "__init__.py",
     "*/train.py",
     "*/evaluate.py",
+    "*/run.py",
 ]
 
 [tool.coverage.report]
