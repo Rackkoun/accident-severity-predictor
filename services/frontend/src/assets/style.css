@@ -723,3 +723,30 @@ h4 {
         min-height: 125px;
     }
 }
+
+/* ------------------------------------------------------------
+   Prediction
+   ------------------------------------------------------------ */
+.asp-prediction-result {
+    margin-top: 16px;
+    text-align: center;
+}
+
+.asp-prediction-severity {
+    color: #36B3C9;
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 12px 0 4px;
+}
+
+.asp-prediction-confidence {
+    color: #AAB8BD;
+    font-size: 0.9rem;
+    margin-bottom: 18px;
+}
+
+.asp-prediction-result .asp-model-details {
+    text-align: left;
+    border-top: 1px solid rgba(143, 167, 174, 0.15);
+    padding-top: 12px;
+}
