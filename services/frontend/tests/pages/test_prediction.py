@@ -4,6 +4,7 @@ Tests for prediction page
 
 from unittest.mock import MagicMock, patch
 
+import requests
 import streamlit as st
 
 from services.frontend.src.models.prediction_model import PredictionResponse
@@ -164,13 +165,13 @@ def test_prediction_form_failed() -> None:
         patch.object(st, "error", side_effect=lambda msg: messages.append(msg)),
         patch(
             "services.frontend.src.pages.prediction.predict",
-            return_value=None,
+            side_effect=requests.exceptions.RequestException("down"),
         ) as mock_predict,
     ):
         _prediction_form()
 
         mock_predict.assert_called_once()
-        assert ("Prediction failed. Please verify the input values and backend availability.") in messages
+        assert "Unable to reach the prediction backend. Please verify that the backend is available." in messages
 
 
 def test_prediction_result_card_renders() -> None:

@@ -4,6 +4,7 @@ Tests for prediction service
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 import requests
 
 from services.frontend.src.models.prediction_model import PredictionResponse
@@ -31,7 +32,7 @@ def test_predict_success() -> None:
 
 
 def test_predict_http_error() -> None:
-    """Test prediction request with HTTP error."""
+    """Test prediction request raises HTTPError."""
 
     with patch("services.frontend.src.services.prediction_service.api_client.post") as mock_post:
         mock_response = MagicMock()
@@ -41,17 +42,15 @@ def test_predict_http_error() -> None:
         mock_response.raise_for_status.side_effect = http_error
         mock_post.return_value = mock_response
 
-        result = predict({"feature1": 1.0}, "test-token")
-
-    assert result is None
+        with pytest.raises(requests.exceptions.HTTPError):
+            predict({"feature1": 1.0}, "test-token")
 
 
 def test_predict_connection_error() -> None:
-    """Test prediction request with connection error."""
+    """Test prediction request raises ConnectionError."""
 
     with patch("services.frontend.src.services.prediction_service.api_client.post") as mock_post:
         mock_post.side_effect = requests.exceptions.ConnectionError("no network")
 
-        result = predict({"feature1": 1.0}, "test-token")
-
-    assert result is None
+        with pytest.raises(requests.exceptions.ConnectionError):
+            predict({"feature1": 1.0}, "test-token")

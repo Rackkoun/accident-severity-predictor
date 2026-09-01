@@ -1,5 +1,6 @@
 """ASP Prediction Lab page."""
 
+import requests
 import streamlit as st
 
 from services.frontend.src.config.features_mapping import (
@@ -269,7 +270,7 @@ def _prediction_form() -> None:
     # AUTHENTICATION
     # ================================================================
 
-    token = st.session_state.get("access_token")
+    token = st.session_state.get("token")
 
     if not token:
         st.error("Authentication required. Please log in first.")
@@ -315,11 +316,47 @@ def _prediction_form() -> None:
     }
 
     with st.spinner("Running prediction..."):
-        result = predict(payload, token)
+        try:
+            result = predict(payload, token)
 
-    if result is None:
-        st.error("Prediction failed. Please verify the input values and backend availability.")
-        return
+        except requests.exceptions.HTTPError as exc:
+            response = exc.response
+
+            if response is not None:
+                status_code = response.status_code
+
+                try:
+                    detail = response.json().get("detail")
+                except ValueError:
+                    detail = None
+
+                if status_code == 401:
+                    st.error("Authentication failed. Please log in again.")
+
+                elif status_code == 403:
+                    st.error("You are not authorized to perform predictions.")
+
+                elif status_code == 422:
+                    st.error(f"Invalid prediction input: {detail or 'please verify the provided values.'}")
+
+                elif status_code >= 500:
+                    st.error("The prediction backend encountered an internal error.")
+
+                else:
+                    st.error(f"Prediction request failed (HTTP {status_code}).")
+
+            else:
+                st.error("Prediction request failed.")
+
+            return
+
+        except requests.exceptions.RequestException:
+            st.error("Unable to reach the prediction backend. Please verify that the backend is available.")
+            return
+
+        except ValueError:
+            st.error("The backend returned an invalid prediction response.")
+            return
 
     st.session_state.prediction_result = result
 
