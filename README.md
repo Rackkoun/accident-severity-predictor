@@ -132,5 +132,6 @@ The project documentation is organized by component and responsibility.
 | [DVC / DagsHub](docs/dvc_setup.md)     | Dataset and model versioning setup                                                   |
 | [MLflow](infra/tracking/mlflow/README.md) | Experiment tracking setup and configuration via DagsHub                           |
 | [Prometheus / Grafana](infra/monitoring/README.md) | Prometheus and Grafana monitoring setup and configuration                |
+| [Monitoring dashboards & alerts](docs/monitoring.md) | Grafana dashboards, provisioning, and Slack alerting                   |
 
 Additional documentation will be added to `docs/` as the corresponding project components mature.
