@@ -17,6 +17,7 @@ backend = [
     "python-multipart>=0.0.32",
     "requests>=2.34.2",
     "uvicorn>=0.51.0",
+    "prometheus-client>=0.21.0"
 ]
 dev = [
     "dvc[s3]>=3.67.1",
@@ -181,6 +182,7 @@ addopts = [
     "--cov-report=xml:coverage.xml",
     "--cov-fail-under=80",
     "-ra",
+    "--import-mode=importlib",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning:joblib.*:0",     # joblib
