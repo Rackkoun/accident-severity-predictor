@@ -135,6 +135,8 @@ services:
       - .env.grafana
     volumes:
       - grafana-data:/var/lib/grafana
+      - ./infra/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro  # datasource + dashboard providers
+      - ./infra/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro   # dashboard JSONs (auto-loaded)
     expose:
       - "3000"
     depends_on:
