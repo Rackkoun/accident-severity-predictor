@@ -131,6 +131,8 @@ The project documentation is organized by component and responsibility.
 | [Reverse Proxy](docs/reverse_proxy.md) | Nginx setup, local HTTPS, TLS certificates, routing, rate limiting and verification  |
 | [DVC / DagsHub](docs/dvc_setup.md)     | Dataset and model versioning setup                                                   |
 | [MLflow](infra/tracking/mlflow/README.md) | Experiment tracking setup and configuration via DagsHub                           |
+| [Airflow Orchestration](infra/airflow/README.md) | Retraining DAG, DAG-governed promotion (Option B), drift gate, yearly schedule + Slack alerts |
+| [Drift Detection](services/monitoring/README.md) | Evidently data/target drift detection with an F1 quality gate; see infra/airflow/docs/phase-9 |
 | [Prometheus / Grafana](infra/monitoring/README.md) | Prometheus and Grafana monitoring setup and configuration                |
 | [Monitoring dashboards & alerts](docs/monitoring.md) | Grafana dashboards, provisioning, and Slack alerting                   |
 
