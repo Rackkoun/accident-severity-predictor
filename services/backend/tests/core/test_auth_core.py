@@ -16,7 +16,7 @@ from services.backend.src.schemas.auth import UserCredentials
 @pytest.fixture
 def settings() -> Settings:
     return Settings(
-        jwt_secret_key="test-secret",
+        jwt_secret_key="test-jwt-secret-key-for-tests-only-0123",
         jwt_expire_minutes=10,
         admin_username="admin",
         admin_password_hash_b64="JDJiJDEyJEYxMWxqbHBueWVQYXhGbmNsV0h1Zi5TMDlwbi9wdEQudDlKc0J4eDJsRm5NSUlWLlJacFh1",

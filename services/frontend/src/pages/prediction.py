@@ -3,6 +3,9 @@
 import requests
 import streamlit as st
 
+from services.frontend.src.components.prediction_chart import (
+    render_prediction_confidence,
+)
 from services.frontend.src.config.features_mapping import (
     FEATURE_MAPS,
     FEATURE_RANGES,
@@ -64,8 +67,6 @@ def _number_input(
 def _prediction_result_card(result: PredictionResponse) -> None:
     """render the prediction result."""
 
-    probability = f"{result.probability * 100:.1f}%" if result.probability is not None else "N/A"
-
     st.html(
         f"""
         <div class="asp-card asp-prediction-result">
@@ -75,10 +76,6 @@ def _prediction_result_card(result: PredictionResponse) -> None:
                 {result.severity}
             </div>
 
-            <div class="asp-prediction-confidence">
-                Confidence: {probability}
-            </div>
-
             <div class="asp-model-details">
                 <span>Model</span>
                 <strong>{result.model_used}</strong>
@@ -86,6 +83,8 @@ def _prediction_result_card(result: PredictionResponse) -> None:
         </div>
         """
     )
+
+    render_prediction_confidence(result)
 
 
 def _prediction_form() -> None:

@@ -182,10 +182,15 @@ def test_prediction_result_card_renders() -> None:
     result.probability = 0.85
     result.model_used = "accident_model_v1"
 
-    with patch.object(st, "html") as mock_html:
+    with (
+        patch.object(st, "html") as mock_html,
+        patch.object(st, "plotly_chart") as mock_chart,
+    ):
         _prediction_result_card(result)
 
         html_arg = mock_html.call_args_list[0].args[0]
         assert "high" in html_arg
-        assert "85.0%" in html_arg
         assert "accident_model_v1" in html_arg
+
+        fig = mock_chart.call_args.args[0]
+        assert fig.data[0].text[0] == "85.0%"

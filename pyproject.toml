@@ -144,7 +144,7 @@ exclude = [                             # exclure non-source dirs
 
 [[tool.mypy.overrides]]
 module = [
-    "sklearn.*", "joblib", "matplotlib.*", "pandas.*", "evidently.*",
+    "sklearn.*", "joblib", "matplotlib.*", "pandas.*", "evidently.*", "plotly.*",
 ]
 ignore_missing_imports = true
 
@@ -187,6 +187,8 @@ addopts = [
 filterwarnings = [
     "ignore::DeprecationWarning:joblib.*:0",     # joblib
     "ignore::UserWarning:sklearn.*:0",           # sklearn feature names
+    "ignore::pydantic.warnings.PydanticDeprecatedSince20:mlflow.*:0",
+    "ignore::pydantic.warnings.PydanticDeprecatedSince212:mlflow.*:0",
 ]
 
 [tool.coverage.run]

@@ -222,7 +222,7 @@ def _b64_hash(password: str) -> str:
 def fake_settings() -> Settings:
     """Test settings with fake users."""
     return Settings(
-        jwt_secret_key="test-secret-key-for-tests-only",
+        jwt_secret_key="test-jwt-secret-key-for-tests-only-0123",
         admin_username="admin",
         admin_password_hash_b64=_b64_hash("admin_pwd"),
         user_username="datascientest",
