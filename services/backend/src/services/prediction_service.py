@@ -210,6 +210,24 @@ def get_model_info() -> dict:
 
         metrics = {key: _coerce_parse(value) for key, value in run.data.metrics.items()}
 
+        # features importance
+        feature_importance = {}
+
+        model = _model_cache["model"]
+        features = _model_cache["features"]
+
+        if hasattr(model, "feature_importances_") and features:
+            importances = model.feature_importances_
+
+            if len(importances) == len(features):
+                feature_importance = {
+                    feature: float(importance)
+                    for feature, importance in zip(
+                        features,
+                        importances,
+                        strict=True,
+                    )
+                }
         return {
             "registry_name": MODEL_CONFIG["model_registry_name"],
             "alias": _model_cache["alias"],
@@ -220,6 +238,7 @@ def get_model_info() -> dict:
             "features_count": len(_model_cache["features"] or []),
             "metrics": metrics,
             "parameters": parameters,
+            "feature_importance": feature_importance,
         }
     except Exception as exc:
         logger.exception("Failed to retrieve model metadata.")

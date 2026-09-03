@@ -17,3 +17,4 @@ class ModelInfo(BaseModel):
     features_count: int
     metrics: dict[str, float]
     parameters: dict[str, Any]
+    feature_importance: dict[str, float] = {}

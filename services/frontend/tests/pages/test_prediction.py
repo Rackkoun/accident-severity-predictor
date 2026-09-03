@@ -195,4 +195,5 @@ def test_prediction_result_card_renders() -> None:
         assert "accident_model_v1" in html_arg
 
         fig = mock_chart.call_args.args[0]
-        assert fig.data[0].text[0] == "85.0%"
+        assert fig.data[0].value == 85.0
+        assert fig.data[0].number["suffix"] == "%"

@@ -8,6 +8,7 @@ from services.frontend.src.components.sidebar import render_sidebar
 from services.frontend.src.config.settings import settings
 from services.frontend.src.pages.home import home_page
 from services.frontend.src.pages.login import login_page
+from services.frontend.src.pages.model_insights import model_insights_page
 from services.frontend.src.pages.monitoring import monitoring_page
 from services.frontend.src.pages.prediction import prediction_page
 from services.frontend.src.services.session_service import (
@@ -91,32 +92,7 @@ def main() -> None:
         login_page()
 
     elif page == "Model Insights":
-        st.html(
-            """
-            <div class="asp-page-header">
-                <div>
-                    <div class="asp-eyebrow">
-                        MODEL ANALYTICS
-                    </div>
-                    <h1>Model Insights</h1>
-                    <p>
-                        Model performance and metadata.
-                    </p>
-                </div>
-            </div>
-
-            <div class="asp-card">
-                <div class="asp-card-title">
-                    MODEL INSIGHTS
-                </div>
-
-                <p>
-                    This section will expose model metadata,
-                    evaluation metrics and feature importance.
-                </p>
-            </div>
-            """
-        )
+        model_insights_page()
 
 
 if __name__ == "__main__":

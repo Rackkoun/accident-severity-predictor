@@ -4,6 +4,7 @@ import requests
 import streamlit as st
 
 from services.frontend.src.components.prediction_chart import (
+    render_key_factors,
     render_prediction_confidence,
 )
 from services.frontend.src.config.features_mapping import (
@@ -12,6 +13,7 @@ from services.frontend.src.config.features_mapping import (
     FEATURES_LABELS,
 )
 from services.frontend.src.models.prediction_model import PredictionResponse
+from services.frontend.src.services.model_info_service import get_model_info
 from services.frontend.src.services.prediction_service import predict
 
 
@@ -408,6 +410,10 @@ def prediction_page() -> None:
 
         if result is not None:
             _prediction_result_card(result)
+            model_info = get_model_info()
+
+            if model_info is not None:
+                render_key_factors(model_info)
 
         else:
             st.html(

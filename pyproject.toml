@@ -36,6 +36,7 @@ frontend = [
     "pydantic>=2.13.4",
     "pydantic-settings>=2.14.2",
     "requests>=2.34.2",
+    "streamlit-cookies-controller>=0.0.4",
 ]
 training = [
     "dagshub>=0.7.1",
