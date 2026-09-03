@@ -1,4 +1,4 @@
-"""Prediction confidence visualization."""
+"""Prediction probability visualization."""
 
 from __future__ import annotations
 
@@ -7,36 +7,50 @@ import streamlit as st
 
 from services.frontend.src.models.prediction_model import PredictionResponse
 
+SEVERITY_LABELS = {
+    0: "Unharmed / Lightly injured",
+    1: "Injured (hospitalized) / Killed",
+}
+
 
 def render_prediction_confidence(result: PredictionResponse) -> None:
-    """Render the confidence of the predicted severity."""
+    """Render probability for each severity class."""
 
-    if result.probability is None:
-        st.html(
-            """
-            <div class="asp-chart-unavailable">
-                Confidence data is not available.
-            </div>
-            """
-        )
-        return
+    if not result.probabilities:
+        if result.probability is None:
+            st.html(
+                """
+                <div class="asp-chart-unavailable">
+                    Probability data is not available.
+                </div>
+                """
+            )
+            return
 
-    probability = max(0.0, min(1.0, result.probability))
-    confidence_percent = probability * 100
+        # Backward-compatible fallback while the backend is being updated.
+        probabilities = {
+            result.severity_code: result.probability,
+        }
+    else:
+        probabilities = result.probabilities
+
+    class_codes = sorted(probabilities)
+    labels = [SEVERITY_LABELS.get(code, f"Class {code}") for code in class_codes]
+    values = [max(0.0, min(1.0, probabilities[code])) * 100 for code in class_codes]
 
     fig = go.Figure(
         go.Bar(
-            x=[confidence_percent],
-            y=["Confidence"],
+            x=values,
+            y=labels,
             orientation="h",
-            text=[f"{confidence_percent:.1f}%"],
+            text=[f"{value:.1f}%" for value in values],
             textposition="inside",
-            hovertemplate=("<b>Prediction confidence</b><br>%{x:.1f}%<extra></extra>"),
+            hovertemplate=("<b>%{y}</b><br>Probability: %{x:.1f}%<extra></extra>"),
         )
     )
 
     fig.update_layout(
-        height=90,
+        height=130,
         margin=dict(
             l=0,
             r=0,
@@ -52,12 +66,13 @@ def render_prediction_confidence(result: PredictionResponse) -> None:
         ),
         yaxis=dict(
             showgrid=False,
-            showticklabels=False,
+            showticklabels=True,
             zeroline=False,
             fixedrange=True,
+            automargin=True,
         ),
         showlegend=False,
-        hovermode="x",
+        hovermode="y",
     )
 
     st.plotly_chart(

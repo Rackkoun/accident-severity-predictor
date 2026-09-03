@@ -179,7 +179,9 @@ def test_prediction_result_card_renders() -> None:
 
     result = MagicMock(spec=PredictionResponse)
     result.severity = "high"
+    result.severity_code = 1
     result.probability = 0.85
+    result.probabilities = {1: 0.85}
     result.model_used = "accident_model_v1"
 
     with (

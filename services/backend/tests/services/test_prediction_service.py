@@ -417,6 +417,7 @@ def test_predict_lazy_load(
     model = MagicMock()
     model.predict.return_value = [0]
     model.predict_proba.return_value = [[0.9, 0.1]]
+    model.classes_ = [0, 1]
 
     mock_load_model.side_effect = lambda: prediction_service._model_cache.update(
         {

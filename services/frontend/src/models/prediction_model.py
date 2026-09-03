@@ -9,4 +9,5 @@ class PredictionResponse(BaseModel):
     severity: str
     severity_code: int
     probability: float | None = None
+    probabilities: dict[int, float] = {}
     model_used: str

@@ -46,6 +46,7 @@ def mock_model() -> MagicMock:
     model = MagicMock()
     model.predict.return_value = [1]
     model.predict_proba.return_value = [[0.3, 0.7]]
+    model.classes_ = [0, 1]
     return model
 
 

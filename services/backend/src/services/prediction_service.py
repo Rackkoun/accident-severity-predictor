@@ -136,11 +136,14 @@ def predict_accident(request: PredictionRequest) -> PredictionResponse:
     start = time.perf_counter()
     prediction = int(model.predict(df)[0])
 
-    # probability (RandomForest supports predict_proba)
+    # probabilities (RandomForest supports predict_proba)
     probability = None
+    probabilities: dict[int, float] = {}
+
     if hasattr(model, "predict_proba"):
         proba = model.predict_proba(df)[0]
-        probability = float(proba[prediction])
+        probabilities = {int(class_code): float(class_probability) for class_code, class_probability in zip(model.classes_, proba, strict=True)}
+        probability = probabilities.get(prediction)
     duration = time.perf_counter() - start
 
     predictions_total.labels(severity_code=str(prediction), model_version=model_name or "unknown").inc()
@@ -157,6 +160,7 @@ def predict_accident(request: PredictionRequest) -> PredictionResponse:
         severity=severity_map.get(prediction, "Unknown"),
         severity_code=prediction,
         probability=probability,
+        probabilities=probabilities,
         model_used=model_name or "unknown",
     )
 

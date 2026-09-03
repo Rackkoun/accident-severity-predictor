@@ -16,6 +16,7 @@ def test_predict_success(mock_predict: MagicMock, client: TestClient, valid_payl
         severity="Injured (hospitalized) / Killed",
         severity_code=1,
         probability=0.85,
+        probabilities={0: 0.15, 1: 0.85},
         model_used="accident-severity-predictor@production (v7)",
     )
 
@@ -40,6 +41,7 @@ def test_predict_severe(
         severity="Injured (hospitalized) / Killed",
         severity_code=1,
         probability=0.92,
+        probabilities={0: 0.08, 1: 0.92},
         model_used="model_test",
     )
 
@@ -58,7 +60,8 @@ def test_predict_light(
     mock_predict.return_value = MagicMock(
         severity="Unharmed / Lightly injured",
         severity_code=0,
-        probability=0.95,
+        probability=0.78,
+        probabilities={0: 0.78, 1: 0.22},
         model_used="model_test",
     )
 
