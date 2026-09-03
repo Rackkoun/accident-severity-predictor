@@ -1,14 +1,44 @@
 """Frontend authentication session helpers."""
 
+from __future__ import annotations
+
 import base64
 import binascii
 import json
 
 import streamlit as st
+from streamlit_cookies_controller import CookieController
+
+COOKIE_NAME = "asp_remember_token"
+COOKIE_MAX_AGE = 30 * 24 * 60 * 60  # 30 days
+
+
+def _cookies() -> CookieController:
+    return CookieController()
+
+
+def _safe_remove_cookie() -> None:
+    """Remove the persistent cookie only if it exists."""
+    cookies = _cookies()
+    if cookies.get(COOKIE_NAME) is not None:
+        cookies.remove(COOKIE_NAME)
+
+
+def _extract_token(raw: str) -> str | None:
+    """Handle legacy dict-encoded cookies and plain tokens."""
+    if not raw:
+        return None
+    if raw.startswith("{"):
+        try:
+            value = json.loads(raw).get("value")
+        except json.JSONDecodeError:
+            return None
+        return value if isinstance(value, str) else None
+    return raw
 
 
 def initialize_session() -> None:
-    """initialize frontend session state."""
+    """Initialize frontend session state and restore persistent authentication."""
 
     defaults = {
         "page": "Home",
@@ -24,32 +54,66 @@ def initialize_session() -> None:
     for key, value in defaults.items():
         st.session_state.setdefault(key, value)
 
+    if st.session_state.authenticated:
+        return
+
+    # Read cookie directly from the HTTP request instant, no JS delay.
+    raw = st.context.cookies.get(COOKIE_NAME)
+    token = _extract_token(raw) if raw else None
+
+    if not token:
+        return
+
+    role = get_role_from_token(token)
+
+    if role is None:
+        _safe_remove_cookie()
+        return
+
+    st.session_state.authenticated = True
+    st.session_state.token = token
+    st.session_state.role = role
+    st.session_state.remember_me = True
+
 
 def set_authenticated_session(
     token: str,
     username: str,
     remember_me: bool = False,
 ) -> None:
-    """store authentication information in the Streamlit session."""
+    """Store authentication information in the Streamlit session."""
 
     st.session_state.authenticated = True
     st.session_state.token = token
     st.session_state.username = username
-    st.session_state.remember_me = remember_me
     st.session_state.role = get_role_from_token(token)
+    st.session_state.remember_me = remember_me
+
+    if remember_me:
+        _cookies().set(
+            COOKIE_NAME,
+            token,
+            max_age=COOKIE_MAX_AGE,
+            path="/",
+            same_site="lax",
+        )
+    else:
+        _safe_remove_cookie()
 
 
 def clear_authenticated_session() -> None:
-    """clear authentication state."""
+    """Clear authentication state and remove persistent authentication."""
 
     st.session_state.authenticated = False
     st.session_state.token = None
     st.session_state.username = None
     st.session_state.role = None
     st.session_state.remember_me = False
-    st.session_state.post_login_page = "Home"
     st.session_state.prediction_result = None
     st.session_state.page = "Home"
+    st.session_state.post_login_page = "Home"
+
+    _safe_remove_cookie()
 
 
 def get_role_from_token(token: str | None) -> str | None:
@@ -72,11 +136,14 @@ def get_role_from_token(token: str | None) -> str | None:
         payload = parts[1]
 
         padding = "=" * (-len(payload) % 4)
+
         decoded = base64.urlsafe_b64decode(
             payload + padding,
         )
 
-        claims = json.loads(decoded.decode("utf-8"))
+        claims = json.loads(
+            decoded.decode("utf-8"),
+        )
 
         role = claims.get("role")
 
@@ -95,19 +162,19 @@ def get_role_from_token(token: str | None) -> str | None:
 
 
 def is_authenticated() -> bool:
-    """return whether the current session is authenticated."""
+    """Return whether the current session is authenticated."""
 
-    return bool(st.session_state.get("authenticated") and st.session_state.get("token"))
+    return bool(st.session_state.get("authenticated", False))
 
 
 def is_admin() -> bool:
-    """return whether the current user has the admin role."""
+    """Return whether the current user has the admin role."""
 
     return is_authenticated() and st.session_state.get("role") == "admin"
 
 
 def is_data_scientist() -> bool:
-    """return whether the current user has the standard user role."""
+    """Return whether the current user has the standard user role."""
 
     return is_authenticated() and st.session_state.get("role") == "user"
 

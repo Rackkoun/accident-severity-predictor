@@ -146,6 +146,7 @@ exclude = [                             # exclure non-source dirs
 [[tool.mypy.overrides]]
 module = [
     "sklearn.*", "joblib", "matplotlib.*", "pandas.*", "evidently.*", "plotly.*",
+    "streamlit_cookies_controller",
 ]
 ignore_missing_imports = true
 

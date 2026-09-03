@@ -59,6 +59,8 @@ def enforce_page_access() -> None:
 def main() -> None:
     """run the ASP frontend."""
 
+    initialize_session()
+
     st.set_page_config(
         page_title=settings.page_title,
         page_icon=settings.page_icon,
@@ -67,8 +69,6 @@ def main() -> None:
     )
 
     load_css()
-
-    initialize_session()
 
     enforce_page_access()
 
