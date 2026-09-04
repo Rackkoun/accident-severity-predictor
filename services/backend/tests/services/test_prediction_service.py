@@ -2,6 +2,7 @@
 Tests for prediction_service.
 """
 
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -11,10 +12,197 @@ from services.backend.src.core.metrics import REGISTRY
 from services.backend.src.schemas.prediction import PredictionRequest
 from services.backend.src.services import prediction_service
 from services.backend.src.services.prediction_service import (
+    _coerce_parse,
+    get_model_info,
     get_model_status,
     load_model,
     predict_accident,
 )
+
+# ---------------------------------------------------------------------------
+# _coerce_parse
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ('{"a": 1}', {"a": 1}),
+        ("[1, 2, 3]", [1, 2, 3]),
+        ("42", 42),
+        ("3.14", 3.14),
+        ("true", True),
+        ("null", None),
+        ("1e-3", 0.001),
+    ],
+)
+def test_coerce_parse_valid_json(raw: str, expected: object) -> None:
+    """Valid JSON strings are deserialized to their Python equivalent."""
+    assert _coerce_parse(raw) == expected
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "not-json",
+        "{broken",
+        "  ",
+        "[1, 2",
+        "{'a': 1}",
+    ],
+)
+def test_coerce_parse_invalid_json_returns_original(raw: str) -> None:
+    """Strings that are not valid JSON are returned unchanged."""
+    assert _coerce_parse(raw) == raw
+
+
+# ---------------------------------------------------------------------------
+# get_model_info
+# ---------------------------------------------------------------------------
+
+
+def _make_run(
+    params: dict[str, str] | None = None,
+    metrics: dict[str, str] | None = None,
+    start_time_ms: int = 1_700_000_000_000,
+):
+    run = MagicMock()
+    run.info.start_time = start_time_ms
+    run.data.params = params or {}
+    run.data.metrics = metrics or {}
+    return run
+
+
+@pytest.mark.usefixtures("loaded_model_cache")
+def test_get_model_info(
+    mock_features: list[str],
+) -> None:
+    """Return full model metadata when a model is cached and MLflow is reachable."""
+    prediction_service._model_cache["run_id"] = "run-123"
+    prediction_service._model_cache["version"] = "7"
+    prediction_service._model_cache["features"] = ["place", "catu"]
+
+    # mock model with feature_importances_
+    prediction_service._model_cache["model"].feature_importances_ = [0.6, 0.4]
+
+    mock_run = _make_run(
+        params={"n_estimators": "100", "max_depth": "5"},
+        metrics={"accuracy": "0.91"},
+    )
+
+    with patch("services.backend.src.services.prediction_service.MlflowClient") as client_cls:
+        client_cls.return_value.get_run.return_value = mock_run
+        info = get_model_info()
+
+    assert info["registry_name"] == "accident-severity-predictor"
+    assert info["alias"] == "production"
+    assert info["version"] == "7"
+    assert info["dataset"] == "BAAC 2005-2024 (FR)"
+    assert info["features_count"] == 2
+    assert info["parameters"] == {"n_estimators": 100, "max_depth": 5}
+    assert info["metrics"] == {"accuracy": 0.91}
+    assert info["feature_importance"] == {"place": 0.6, "catu": 0.4}
+
+    # trained_at should be a valid ISO timestamp
+    dt = datetime.fromisoformat(info["trained_at"])
+    assert dt.tzinfo is not None
+
+
+@pytest.mark.usefixtures("loaded_model_cache")
+def test_get_model_info_no_feature_importances() -> None:
+    """feature_importance is empty when the model lacks feature_importances_."""
+    prediction_service._model_cache["run_id"] = "run-123"
+    prediction_service._model_cache["version"] = "7"
+    del prediction_service._model_cache["model"].feature_importances_
+
+    mock_run = _make_run()
+
+    with patch("services.backend.src.services.prediction_service.MlflowClient") as client_cls:
+        client_cls.return_value.get_run.return_value = mock_run
+        info = get_model_info()
+
+    assert info["feature_importance"] == {}
+
+
+@pytest.mark.usefixtures("loaded_model_cache")
+def test_get_model_info_feature_importance_length_mismatch() -> None:
+    """feature_importance is empty when importances length ≠ features length."""
+    prediction_service._model_cache["run_id"] = "run-123"
+    prediction_service._model_cache["version"] = "7"
+    prediction_service._model_cache["model"].feature_importances_ = [0.5]
+    # 2 features vs 1 importance → no match
+    prediction_service._model_cache["features"] = ["place", "catu"]
+
+    mock_run = _make_run()
+
+    with patch("services.backend.src.services.prediction_service.MlflowClient") as client_cls:
+        client_cls.return_value.get_run.return_value = mock_run
+        info = get_model_info()
+
+    assert info["feature_importance"] == {}
+
+
+def test_get_model_info_no_run_id() -> None:
+    """HTTPException(503) when run_id is not set in the cache."""
+    prediction_service._model_cache.update(
+        {
+            "model": MagicMock(),
+            "run_id": None,
+        }
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        get_model_info()
+
+    assert exc_info.value.status_code == 503
+    assert "run metadata" in exc_info.value.detail.lower()
+
+
+@patch("services.backend.src.services.prediction_service.load_model")
+def test_get_model_info_lazy_load(
+    mock_load_model: MagicMock,
+) -> None:
+    """load_model() is called when the cache is empty."""
+    prediction_service._model_cache.update(
+        {
+            "model": None,
+            "features": ["place"],
+            "name": "loaded",
+            "alias": "production",
+            "version": "1",
+            "run_id": "run-001",
+        }
+    )
+
+    mock_load_model.return_value = None
+
+    mock_run = _make_run()
+
+    with patch("services.backend.src.services.prediction_service.MlflowClient") as client_cls:
+        client_cls.return_value.get_run.return_value = mock_run
+        get_model_info()
+
+    mock_load_model.assert_called_once()
+
+
+def test_get_model_info_mlflow_client_failure() -> None:
+    """HTTPException(503) when MlflowClient.get_run raises."""
+    prediction_service._model_cache.update(
+        {
+            "model": MagicMock(),
+            "run_id": "run-123",
+        }
+    )
+
+    with patch("services.backend.src.services.prediction_service.MlflowClient") as client_cls:
+        client_cls.return_value.get_run.side_effect = RuntimeError("connection refused")
+
+        with pytest.raises(HTTPException) as exc_info:
+            get_model_info()
+
+    assert exc_info.value.status_code == 503
+    assert "Unable to retrieve model metadata" in exc_info.value.detail
+    assert "connection refused" in exc_info.value.detail
 
 
 @pytest.fixture(autouse=True)

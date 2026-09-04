@@ -2,11 +2,14 @@
 Tests for session service
 """
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import streamlit as st
 
 from services.frontend.src.services.session_service import (
+    COOKIE_NAME,
+    _extract_token,
+    _safe_remove_cookie,
     clear_authenticated_session,
     get_role_from_token,
     initialize_session,
@@ -16,6 +19,186 @@ from services.frontend.src.services.session_service import (
     request_page,
     set_authenticated_session,
 )
+
+
+def test_extract_token_empty() -> None:
+    """Test extracting token from an empty cookie value."""
+
+    assert _extract_token("") is None
+
+
+def test_extract_token_plain_value() -> None:
+    """Test extracting a plain token cookie value."""
+
+    assert _extract_token("raw-token") == "raw-token"
+
+
+def test_extract_token_legacy_json_value() -> None:
+    """Test extracting a token from a legacy dict-encoded cookie."""
+
+    assert _extract_token('{"value": "legacy-token"}') == "legacy-token"
+
+
+def test_extract_token_legacy_json_non_string_value() -> None:
+    """Test that a non-string legacy cookie value is rejected."""
+
+    assert _extract_token('{"value": 42}') is None
+
+
+def test_extract_token_invalid_json() -> None:
+    """Test that malformed legacy cookies return no token."""
+
+    assert _extract_token('{"value":') is None
+
+
+def test_extract_token_legacy_json_missing_value() -> None:
+    """Test that legacy cookies without a value key are rejected."""
+
+    assert _extract_token('{"other": "x"}') is None
+
+
+def test_set_authenticated_session_with_remember_me() -> None:
+    """Test that remember-me persists the token in a cookie."""
+
+    token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoiYWRtaW4ifQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+
+    with (
+        patch.object(st, "session_state") as mock_session,
+        patch("services.frontend.src.services.session_service.CookieController") as mock_controller_cls,
+    ):
+        controller = mock_controller_cls.return_value
+        controller.get.return_value = None
+
+        set_authenticated_session(token, "test-user", True)
+
+        assert mock_session.remember_me is True
+        controller.set.assert_called_once()
+        controller.remove.assert_not_called()
+
+
+def test_set_authenticated_session_without_remember_me() -> None:
+    """Test that non-persistent logins remove any stale cookie."""
+
+    with (
+        patch.object(st, "session_state") as mock_session,
+        patch("services.frontend.src.services.session_service.CookieController") as mock_controller_cls,
+    ):
+        controller = mock_controller_cls.return_value
+        controller.get.return_value = "stale-token"
+
+        set_authenticated_session("new-token", "test-user", False)
+
+        assert mock_session.remember_me is False
+        controller.remove.assert_called_once_with(COOKIE_NAME)
+
+
+def test_safe_remove_cookie_when_absent() -> None:
+    """Test that removal is skipped when the cookie does not exist."""
+
+    with patch("services.frontend.src.services.session_service.CookieController") as mock_controller_cls:
+        controller = mock_controller_cls.return_value
+        controller.get.return_value = None
+
+        _safe_remove_cookie()
+
+        controller.remove.assert_not_called()
+
+
+def test_initialize_session_restores_cookie_token() -> None:
+    """Test that a valid cookie token restores the session."""
+
+    token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoiYWRtaW4ifQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+
+    with (
+        patch.object(st, "session_state") as mock_session,
+        patch.object(st, "context") as mock_context,
+        patch(
+            "services.frontend.src.services.session_service.get_role_from_token",
+            return_value="admin",
+        ) as mock_role,
+    ):
+        mock_session.setdefault.side_effect = lambda key, value: setattr(mock_session, key, value)
+        mock_session.authenticated = False
+        mock_context.cookies = {COOKIE_NAME: token}
+
+        initialize_session()
+
+        mock_role.assert_called_once_with(token)
+        assert mock_session.authenticated is True
+        assert mock_session.token == token
+        assert mock_session.role == "admin"
+        assert mock_session.remember_me is True
+
+
+def test_initialize_session_rejects_invalid_cookie_token() -> None:
+    """Test that cookies with an unusable token are removed."""
+
+    with (
+        patch.object(st, "session_state") as mock_session,
+        patch.object(st, "context") as mock_context,
+        patch(
+            "services.frontend.src.services.session_service.get_role_from_token",
+            return_value=None,
+        ),
+        patch("services.frontend.src.services.session_service._safe_remove_cookie") as mock_remove,
+    ):
+        mock_session.setdefault.side_effect = lambda key, value: setattr(mock_session, key, value)
+        mock_session.authenticated = False
+        mock_context.cookies = {COOKIE_NAME: "invalid-token"}
+
+        initialize_session()
+
+        assert mock_session.authenticated is False
+        mock_remove.assert_called_once()
+
+
+def test_initialize_session_without_cookie() -> None:
+    """Test initialization when no cookie is present."""
+
+    with (
+        patch.object(st, "session_state") as mock_session,
+        patch.object(st, "context") as mock_context,
+        patch(
+            "services.frontend.src.services.session_service._safe_remove_cookie",
+        ) as mock_remove,
+    ):
+        mock_session.setdefault.side_effect = lambda key, value: setattr(mock_session, key, value)
+        mock_session.authenticated = False
+        mock_context.cookies = {}
+
+        initialize_session()
+
+        assert mock_session.authenticated is False
+        mock_remove.assert_not_called()
+
+
+def test_initialize_session_already_authenticated() -> None:
+    """Test that an existing session is left untouched."""
+
+    with (
+        patch.object(st, "session_state") as mock_session,
+        patch.object(st, "context") as mock_context,
+    ):
+        # Treat all keys as already present so setdefault() does not
+        # clobber the pre-existing authentication state we want to
+        # preserve.
+        mock_session.setdefault = MagicMock()
+        mock_session.authenticated = True
+        mock_session.token = "existing-token"
+
+        initialize_session()
+
+        assert mock_session.authenticated is True
+        assert mock_session.token == "existing-token"
+        mock_context.cookies.get.assert_not_called()
+
+
+def test_get_role_from_token_bad_payload_encoding() -> None:
+    """Test that undecodable JWT payloads return no role."""
+
+    result = get_role_from_token("header.!!!invalid-base64!!!.signature")
+
+    assert result is None
 
 
 def test_initialize_session() -> None:

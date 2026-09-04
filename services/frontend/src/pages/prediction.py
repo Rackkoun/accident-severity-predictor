@@ -22,7 +22,7 @@ def _mapped_selectbox(
     *,
     default_value: int | None = None,
 ) -> int:
-    """render a human-readable selectbox and return the API value."""
+    """Render a human-readable selectbox and return the API value."""
 
     mapping = FEATURE_MAPS[feature]
     label = FEATURES_LABELS[feature]
@@ -51,7 +51,7 @@ def _number_input(
     value: int | float,
     step: int | float = 1,
 ) -> int | float:
-    """render a constrained numeric input using FEATURE_RANGES."""
+    """Render a constrained numeric input using FEATURE_RANGES."""
 
     label = FEATURES_LABELS[feature]
     min_value, max_value = FEATURE_RANGES[feature]
@@ -66,42 +66,115 @@ def _number_input(
     )
 
 
-def _prediction_result_card(result: PredictionResponse) -> None:
-    """render the prediction result."""
+def _prediction_result_card(
+    result: PredictionResponse,
+) -> None:
+    """Render the prediction result section."""
+
+    # st.html(
+    #     """
+    #     <div class="asp-card-title">
+    #         PREDICTION RESULT
+    #     </div>
+    #     """
+    # )
+
+    # ================================================================
+    # RESULT SUMMARY
+    # ================================================================
 
     st.html(
         f"""
-        <div class="asp-card asp-prediction-result">
-            <div class="asp-card-title">PREDICTION RESULT</div>
+        <div style="
+            margin-top: 0.5rem;
+            padding-top: 0.85rem;
+            border-top: 1px solid rgba(128,128,128,0.18);
+        ">
+            <div style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 1rem;
+            ">
+                <div>
+                    <div style="
+                        font-size: 0.72rem;
+                        text-transform: uppercase;
+                        letter-spacing: 0.08em;
+                        opacity: 0.55;
+                        margin-bottom: 0.2rem;
+                    ">
+                        Predicted severity
+                    </div>
 
-            <div class="asp-prediction-severity">
-                {result.severity}
-            </div>
+                    <div style="
+                        font-size: 1.35rem;
+                        font-weight: 700;
+                    ">
+                        {result.severity}
+                    </div>
+                </div>
 
-            <div class="asp-model-details">
-                <span>Model</span>
-                <strong>{result.model_used}</strong>
+                <div style="
+                    text-align: right;
+                ">
+                    <div style="
+                        font-size: 0.72rem;
+                        text-transform: uppercase;
+                        letter-spacing: 0.08em;
+                        opacity: 0.55;
+                        margin-bottom: 0.2rem;
+                    ">
+                        Model
+                    </div>
+
+                    <div style="
+                        font-size: 0.82rem;
+                        font-weight: 600;
+                        opacity: 0.85;
+                    ">
+                        {result.model_used}
+                    </div>
+                </div>
             </div>
         </div>
         """
     )
 
-    render_prediction_confidence(result)
+    # ================================================================
+    # RESULT VISUALIZATION
+    # ================================================================
+
+    visualization_left, visualization_right = st.columns(
+        [1, 1],
+        gap="large",
+    )
+
+    with visualization_left:
+        render_prediction_confidence(result)
+
+    with visualization_right:
+        model_info = get_model_info()
+
+        if model_info is not None:
+            render_key_factors(model_info)
 
 
 def _prediction_form() -> None:
-    """render the prediction input form."""
+    """Render the prediction input form."""
 
     st.html(
         """
-        <div class="asp-card-title">ACCIDENT INFORMATION</div>
+        <div class="asp-card-title">
+            ACCIDENT INFORMATION
+        </div>
         """
     )
 
     col1, col2 = st.columns(2)
 
     # ================================================================
-    # LEFT COLUMN — VICTIM / VEHICLE
+    # LEFT COLUMN - VICTIM / VEHICLE / ROAD
     # ================================================================
 
     with col1:
@@ -155,10 +228,6 @@ def _prediction_form() -> None:
             value=1,
         )
 
-        # ============================================================
-        # ROAD
-        # ============================================================
-
         catr = _mapped_selectbox(
             "catr",
             default_value=3,
@@ -180,7 +249,7 @@ def _prediction_form() -> None:
         )
 
     # ================================================================
-    # RIGHT COLUMN — CONDITIONS / LOCATION
+    # RIGHT COLUMN - CONDITIONS / LOCATION
     # ================================================================
 
     with col2:
@@ -279,10 +348,6 @@ def _prediction_form() -> None:
 
     # ================================================================
     # API PAYLOAD
-    #
-    # IMPORTANT:
-    # Values returned by mapped selectboxes are the actual API values.
-    # Human-readable labels never enter the payload.
     # ================================================================
 
     payload = {
@@ -318,7 +383,10 @@ def _prediction_form() -> None:
 
     with st.spinner("Running prediction..."):
         try:
-            result = predict(payload, token)
+            result = predict(
+                payload,
+                token,
+            )
 
         except requests.exceptions.HTTPError as exc:
             response = exc.response
@@ -363,14 +431,20 @@ def _prediction_form() -> None:
 
 
 def prediction_page() -> None:
-    """render the ASP Prediction Lab."""
+    """Render the ASP Prediction Lab."""
 
     st.html(
         """
         <div class="asp-page-header">
             <div>
-                <div class="asp-eyebrow">MACHINE LEARNING</div>
-                <h1>Prediction Lab</h1>
+                <div class="asp-eyebrow">
+                    MACHINE LEARNING
+                </div>
+
+                <h1>
+                    Prediction Lab
+                </h1>
+
                 <p>
                     Configure accident characteristics and predict
                     road accident severity.
@@ -380,59 +454,61 @@ def prediction_page() -> None:
         """
     )
 
-    left, right = st.columns(
-        [7, 3],
-        gap="large",
+    # ================================================================
+    # PREDICTION RESULT - TOP
+    # ================================================================
+
+    result = st.session_state.get("prediction_result")
+
+    st.html(
+        """
+        <div class="asp-card">
+            <div class="asp-card-title">
+                PREDICTION RESULT
+            </div>
+        """
     )
 
-    # ================================================================
-    # INPUT PANEL
-    # ================================================================
+    if result is not None:
+        _prediction_result_card(result)
 
-    with left:
+    else:
         st.html(
             """
-            <div class="asp-card">
-                <div class="asp-card-title">PREDICTION INPUT</div>
+            <div class="asp-prediction-empty-content">
+                <div class="asp-prediction-empty-icon">
+                    ◎
+                </div>
+
+                <div class="asp-prediction-empty-title">
+                    Ready for prediction
+                </div>
+
+                <div class="asp-prediction-empty-text">
+                    Configure the accident information below
+                    and click <strong>Predict Severity</strong>.
+                </div>
+            </div>
             """
         )
 
-        _prediction_form()
-
-        st.html("</div>")
+    st.html("</div>")
 
     # ================================================================
-    # RESULT PANEL
+    # PREDICTION INPUT - BOTTOM
     # ================================================================
 
-    with right:
-        result = st.session_state.get("prediction_result")
+    st.html("<div style='height: 1.25rem;'></div>")
 
-        if result is not None:
-            _prediction_result_card(result)
-            model_info = get_model_info()
+    st.html(
+        """
+        <div class="asp-card">
+            <div class="asp-card-title">
+                PREDICTION INPUT
+            </div>
+        """
+    )
 
-            if model_info is not None:
-                render_key_factors(model_info)
+    _prediction_form()
 
-        else:
-            st.html(
-                """
-                <div class="asp-card asp-prediction-empty">
-                    <div class="asp-card-title">PREDICTION RESULT</div>
-
-                    <div class="asp-prediction-empty-content">
-                        <div class="asp-prediction-empty-icon">◎</div>
-
-                        <div class="asp-prediction-empty-title">
-                            Ready for prediction
-                        </div>
-
-                        <div class="asp-prediction-empty-text">
-                            Configure the accident information and
-                            click <strong>Predict Severity</strong>.
-                        </div>
-                    </div>
-                </div>
-                """
-            )
+    st.html("</div>")
