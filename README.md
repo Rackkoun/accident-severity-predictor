@@ -137,3 +137,10 @@ The project documentation is organized by component and responsibility.
 | [Monitoring dashboards & alerts](docs/monitoring.md) | Grafana dashboards, provisioning, and Slack alerting                   |
 
 Additional documentation will be added to `docs/` as the corresponding project components mature.
+
+
+## References
+
+Technical documentation, official specifications, and external resources consulted during the development of ASP are collected in the [ASP References](references/asp_references.md) document.
+
+The reference list includes sources covering Python, FastAPI, Pydantic, Docker, Docker Compose, Streamlit, Plotly, MLflow, DVC/DagsHub, GitHub Actions, testing and code quality, as well as the official BAAC dataset documentation.
