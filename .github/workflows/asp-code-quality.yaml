@@ -27,6 +27,7 @@ jobs:
           uv sync \
             --group dev \
             --group backend \
+            --group frontend \
             --group training
 
       - name: 🔍 Ruff Linter
