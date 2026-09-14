@@ -33,6 +33,10 @@ dev = [
 frontend = [
     "plotly>=6.9.0",
     "streamlit>=1.59.1",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.2",
+    "requests>=2.34.2",
+    "streamlit-cookies-controller>=0.0.4",
 ]
 training = [
     "dagshub>=0.7.1",
@@ -95,6 +99,9 @@ select = [
 # Notebooks: trailing whitespace + ML naming
 "notebooks/**/*.ipynb" = ["N803", "N806", "W291"]
 
+# frontend run
+"services/frontend/run.py" = ["E402"]
+
 
 [tool.ruff.format]
 quote-style = "double"
@@ -138,7 +145,8 @@ exclude = [                             # exclure non-source dirs
 
 [[tool.mypy.overrides]]
 module = [
-    "sklearn.*", "joblib", "matplotlib.*", "pandas.*", "evidently.*",
+    "sklearn.*", "joblib", "matplotlib.*", "pandas.*", "evidently.*", "plotly.*",
+    "streamlit_cookies_controller",
 ]
 ignore_missing_imports = true
 
@@ -149,6 +157,7 @@ module = [
     "services.training.tests.*",
     "services.backend.tests.*",
     "services.monitoring.tests.*",
+    "services.frontend.tests.*",
 ]
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
@@ -161,6 +170,7 @@ testpaths = [
     "services/training/tests",
     "services/backend/tests",
     "services/monitoring/tests",
+    "services/frontend/tests",
     "infra/airflow/tests",
 ]
 pythonpath = ["."]
@@ -179,6 +189,8 @@ addopts = [
 filterwarnings = [
     "ignore::DeprecationWarning:joblib.*:0",     # joblib
     "ignore::UserWarning:sklearn.*:0",           # sklearn feature names
+    "ignore::pydantic.warnings.PydanticDeprecatedSince20:mlflow.*:0",
+    "ignore::pydantic.warnings.PydanticDeprecatedSince212:mlflow.*:0",
 ]
 
 [tool.coverage.run]
@@ -192,6 +204,7 @@ omit = [
     "__init__.py",
     "*/train.py",
     "*/evaluate.py",
+    "*/run.py",
 ]
 
 [tool.coverage.report]

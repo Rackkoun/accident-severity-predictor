@@ -118,8 +118,20 @@ class PredictionResponse(BaseModel):
     """prediction result."""
 
     severity: str = Field(..., description="severity prediction in text")
-    severity_code: int = Field(..., ge=0, le=1, description="0=Indemne/Léger, 1=Blessé hosp./Tué")
-    probability: float | None = Field(..., description="class probability")
+    severity_code: int = Field(
+        ...,
+        ge=0,
+        le=1,
+        description="0=Unharmed/Lightly injured, 1=Hospitalized injured/Killed",
+    )
+    probability: float | None = Field(
+        ...,
+        description="probability of the predicted class",
+    )
+    probabilities: dict[int, float] = Field(
+        default_factory=dict,
+        description="probability for each severity class",
+    )
     model_used: str = Field(..., description="model name used")
 
 

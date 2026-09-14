@@ -12,7 +12,7 @@ from starlette.responses import Response
 
 from common.utils.asp_logging import get_logger
 from services.backend.src.core.metrics import http_request_duration_seconds, http_requests_total
-from services.backend.src.routes import auth, health, metrics, predict, reload, train
+from services.backend.src.routes import auth, health, metrics, model_info, predict, reload, train
 from services.backend.src.services.prediction_service import load_model
 
 logger = get_logger(__name__)
@@ -40,6 +40,7 @@ app = FastAPI(
     - **POST /api/v1/predict** — Predict severity from accident features
     - **POST /api/v1/model/reload** — Reload the current 'production' model (used after retraining promotes a new champion)
     - **GET /api/v1/health** — Check service and model status
+    - **GET /api/v1/model/info** – Get current production model metadata
     - **GET /metrics** — Prometheus metrics (internal network only, not exposed via nginx)
     """,
     version="1.0.0",
@@ -51,6 +52,7 @@ app.include_router(health.router)
 app.include_router(train.router)
 app.include_router(predict.router)
 app.include_router(reload.router)
+app.include_router(model_info.router)
 app.include_router(metrics.router)
 
 

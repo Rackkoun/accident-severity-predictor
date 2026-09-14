@@ -46,6 +46,7 @@ def mock_model() -> MagicMock:
     model = MagicMock()
     model.predict.return_value = [1]
     model.predict_proba.return_value = [[0.3, 0.7]]
+    model.classes_ = [0, 1]
     return model
 
 
@@ -222,7 +223,7 @@ def _b64_hash(password: str) -> str:
 def fake_settings() -> Settings:
     """Test settings with fake users."""
     return Settings(
-        jwt_secret_key="test-secret-key-for-tests-only",
+        jwt_secret_key="test-jwt-secret-key-for-tests-only-0123",
         admin_username="admin",
         admin_password_hash_b64=_b64_hash("admin_pwd"),
         user_username="datascientest",

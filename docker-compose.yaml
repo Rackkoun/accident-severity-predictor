@@ -61,6 +61,8 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+      grafana:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider https://127.0.0.1/api/v1/health --no-check-certificate || exit 1"]
       interval: 30s
@@ -86,6 +88,22 @@ services:
     networks:
       - asp-network
 
+  frontend:
+    build:
+      context: .
+      dockerfile: services/frontend/Dockerfile.frontend
+    image: asp-frontend:latest
+    container_name: asp-frontend
+    ports:
+      - "8501:8501"
+    environment:
+      - BACKEND_URL=http://asp-backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - asp-network
   prometheus:
     image: prom/prometheus:v3.0.1
     container_name: asp-prometheus

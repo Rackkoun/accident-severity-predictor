@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [training, backend]
+        service: [training, backend, frontend]
         include:
           - service: training
             dockerfile: services/training/Dockerfile.training
@@ -26,6 +26,11 @@ jobs:
             dockerfile: services/backend/Dockerfile.backend
             image: asp-backend:latest
             smoke_cmd: 'python -c "import services.backend.src.main; print(\"OK\")"'
+
+          - service: frontend
+            dockerfile: services/frontend/Dockerfile.frontend
+            image: asp-frontend:latest
+            smoke_cmd: 'python -c "import services.frontend.src.app; print(\"OK\")"'
 
     steps:
       - name: Checkout code
