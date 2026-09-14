@@ -1,7 +1,7 @@
 # Accident Severity Predictor (ASP) - docker-compose.yaml
 #
 # Usage:
-#   docker compose up -d --build backend
+#   docker compose up -d --build
 #   docker compose down
 
 services:
@@ -14,7 +14,6 @@ services:
         GROUP_ID: ${GID:-1000}
         # solve: ERROR - stderr: permission denied
         # while trying to connect to the docker API at unix:///var/run/docker.sock
-        # DOCKER_GID: ${DOCKER_GID}
     image: asp-backend:latest
     container_name: asp-backend
     expose:
